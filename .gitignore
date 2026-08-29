@@ -1,0 +1,24 @@
+# 备份文件
+index.html.bak*
+*.bak
+
+# 大文件
+剑来.txt
+参考.txt
+jl.txt
+sk_tr_*.txt
+
+# 缓存/临时
+_ds/
+_ds_cache/
+_ds39.zip
+.v2c/
+served_check.html
+node_modules/
+$null
+)]{0
+60
+80
+
+# 会话
+session.jsonl

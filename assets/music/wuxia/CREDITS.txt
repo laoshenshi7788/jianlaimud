@@ -1,0 +1,47 @@
+游戏配乐来源与授权（Pixabay Content License：可免费商用、无需署名；此处仍致谢作者）
+======================================================================
+
+标题界面 title
+  01 Moonlit Whispers（月下低语）            —— kaazoom
+  02 Moonlit Blossoms（月夜花影）            —— kaazoom
+  03 Mountain Spring（山泉·完整版）          —— kaazoom
+  04 Journey Of The Heart（心之旅途）        —— kaazoom
+  05 Where The Cranes Go（鹤去之处）         —— kaazoom
+  06 In The Bamboo Grove（竹林深处）         —— kaazoom
+
+市井小镇 town
+  01 Among The Paper Lanterns（纸灯笼之间）  —— kaazoom
+  02 Here Giant Pandas Live（熊猫家园）      —— kaazoom
+  03 Chinese Traditional Tune（中国传统小调）—— AntipodeanWriter
+  04 Chinese Traditional Song（中国传统歌谣）—— Surprising_Media
+  05 Chinese（华夏）                          —— Kulakovka
+  06 Chinese - China Music（华夏之音）        —— SoundGalleryDT
+
+都城 capital
+  01 China Chinese Asian Music               —— SolarFLEX
+  02 China Chinese Asian Music               —— APALONBeats
+  03 China Chinese Asian Music               —— Tunetank
+
+宗门 sect（古琴）
+  01 Guqin Reflection（琴语晨思）            —— RainStreetCat
+  02 Guqin Reflection (1)（琴语晨思·变奏）   —— RainStreetCat
+  03 Guqin Melody（古琴曲）                  —— LunarBoomMusic
+
+隐地 hidden（箫）
+  01 空山箫语 · Whisper of Empty Mountains   —— RainStreetCat
+  02 空山箫语 (1)                            —— RainStreetCat
+  03 La Voie du Silence（寂静之路）          —— u_akuzvxib8r
+
+险地 danger
+  01 Sad Epic Documentary（萧瑟史诗）        —— PoJeng
+  02 China Chinese Asian Music（冒险）       —— Tunetank
+  03 The Eternal Ascension（永恒飞升）       —— Joyvideo123
+
+战斗 battle
+  01 China Chinese Epic Music（华夏史诗）    —— Tunetank
+  02 China Epic Background Music（史诗背景） —— Tunetank
+  03 Lunar New Year - Chinese Epic Cinematic —— FASSounds
+
+授权说明：以上曲目均来自 Pixabay（https://pixabay.com/music/），
+适用 Pixabay Content License（https://pixabay.com/service/license-summary/）：
+可免费用于商业用途、无需署名、可修改。
