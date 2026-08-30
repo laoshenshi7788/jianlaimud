@@ -1,0 +1,11 @@
+const fs = require('fs');
+const L = fs.readFileSync('index.html', 'utf8').split(/\r?\n/);
+const i0 = L.findIndex(l => l.indexOf('//<<MUNI-BEGIN>>') > -1);
+const i1 = L.findIndex(l => l.indexOf('//<<MUNI-END>>') > -1);
+console.log('muni block lines ' + (i0 + 1) + '-' + (i1 + 1));
+console.log(L.slice(i0, i0 + 5).map((l, k) => (i0 + k + 1) + ': ' + l.slice(0, 160)).join('\n'));
+const src = L.join('\n');
+const m = src.match(/"骊珠小镇·镇署":\{[^}]*\}/);
+console.log('\n镇署: ' + (m ? m[0].slice(0, 260) : 'NOT FOUND'));
+const n = src.match(/"[^"]*县丞":\{[^}]*\}/);
+console.log('\n县丞NPC: ' + (n ? n[0].slice(0, 200) : 'NOT FOUND'));

@@ -1,0 +1,10 @@
+const fs = require('fs');
+const src = fs.readFileSync('index.html', 'utf8');
+const i0 = src.indexOf('const CHENG_CFG');
+const body = src.slice(i0, src.indexOf('};', i0) + 2);
+const re = /'(cheng_[a-z]+)'\s*:\s*\{([\s\S]*?)name\s*:\s*'([^']+)'/g;
+let m;
+const out = [];
+while ((m = re.exec(body))) out.push(m[1] + '  ' + m[3]);
+fs.writeFileSync('_tutorials/_ids.txt', out.join('\n'));
+console.log('count ' + out.length);

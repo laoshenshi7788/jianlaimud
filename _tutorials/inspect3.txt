@@ -1,0 +1,4 @@
+DRAMA at 615976 | EVENT_TEMPLATES at 630306
+npc keys: 14 | last: {"name":"茅小冬","pos":629235}
+=== 700 chars from last NPC ===
+"  '茅小冬':{\r\n    'wenda':{ entry:true, title:'先生问剑',\r\n      lines:[\r\n        '（山崖书院廊下，茅小冬合上手中的书卷，含笑看着你）来得正好。',\r\n        '（他拈起一片落在地上的梧桐叶，轻轻一弹，叶片竟平平飞出老远）读书人问剑，问的不是胜负，是进退。你说，剑道上的\"退\"，比\"进\"难在哪里？'\r\n      ],\r\n      options:[\r\n        { text:'进是替人开路，退是替自己守心——守心更难。', effect:function(){\r\n            gainAff('茅小冬',14); player.exp+=40; gainFame(2);\r\n            log('（他抚掌而笑）说得好！守得住心，才退得从容。这一番话，抵得上半卷剑谱。','npc','茅小冬');\r\n            if(!hasSkill('剑心通明')){ learnSkill('剑心通明'); logSkill('（你于这一问中若有所悟——习得【剑心通明】！）'); }\r\n            logSuccess('好感 +14，经验 +40，侠名 +2。');\r\n        } },\r\n        { text:'退是示弱，剑道上没有退字。', effect:function(){\r\n            gainAff('茅小冬',-6); player.exp+=15;\r\n            log('（他轻轻摇头）不懂退，便不懂进。这话，"

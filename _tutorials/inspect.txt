@@ -1,0 +1,6 @@
+DRAMA at 615976, 杨老头 at 628291
+=== after 杨老头 first ]; ===
+"s('好感 +6，经验 +40。');\r\n        } },\r\n        { text:'商人逐利而已，哪来赚赔的道理。', effect:function(){\r\n            gainAff('姜尚真',-4); player.exp+=12;\r\n            log('（他做出一副伤心状）哎哟，扎心了。账房先生都不如你狠——亏得我还想带你入伙。','npc','姜尚真');\r\n            logSuccess('好感 -4，经验 +12。');\r\n        } }\r\n      ] }\r\n  }\r\n];\r\nconst ENC_RECENT=[];\r\nfunction genRa"
+=== around 638100-638420 ===
+"yer.exp+=20; gainFame(2); addItem('脂粉'); log('（含羞的仰慕者把花往你手里一塞，转身就跑。经验 +20，侠名 +2，脂粉 +1）','success'); }},\r\n        {text:'拱手婉拒。', effect:function(){ log('（那人脸更红了，讪讪地退了开去。侠名 +1）','sys'); gainFame(1); }}\r\n      ]};\r\n  }},\r\n  // —— 文圣：读书人的道理 ——\r\n  '文圣':{\r\n    'dadao':{ entry:true, title:'老秀才的一问',\r\n      cond:function(){ ret"
+EVENT_TEMPLATES at 630312: "EVENT_TEMPLATES=[\r\n {id:'robber', zone:'', build:function(zone){\r\n    "

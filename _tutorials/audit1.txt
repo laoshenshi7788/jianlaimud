@@ -1,0 +1,41 @@
+﻿DRAMA NPC 数: 14
+阿良、白眠、陈平安、郭竹酒、酒肆河婆、李宝瓶、刘羡阳、茅小冬、宁姚、裴钱、齐静春、阮秀、温轻眉、杨老头
+codexNpc at line 13377
+function codexNpc(name){
+  if(!game.codex) game.codex={};
+  if(!game.codex.npcs) game.codex.npcs={};
+  if(!game.codex.npcs[name]){ game.codex.npcs[name]=true; }
+}
+// 记录足迹（到访新地点）
+function codexPlace(rn){
+  if(!game.codex) game.codex={};
+  if(!game.codex.places) game.codex.places={};
+  game.codex.places[rn]=true;
+}
+// 记录物品收集（首次获得）
+function codexItem(name){
+  if(!game.codex) game.codex={};
+  if(!game.codex.items) game.codex.items={};
+  if(!game.codex.items[name]){ game.codex.items[name]=true; }
+}
+// 四条钩子接入：战斗 / 对话 / 移动 / 拾取
+function hookCodexEnemy(name){ codexEnemy(name); }
+function hookCodexNpc(name){ codexNpc(name); }
+function hookCodexPlace(rn){ codexPlace(rn); }
+functio
+=== ambientFlavor at line 4276 ===
+function ambientFlavor(zone){
+  _sceneryTick++;
+  if(_sceneryTick%3!==0 || Math.random()>0.6) return;
+  const pool=SCENERY[zone]||SCENERY['名门'];
+  log(jp(pool),'sys');
+  if(Math.random()<0.35){
+    const sx=SEASON_BRIEF[game.season||0];
+    if(sx && sx.text) log('('+SEASONS[game.season||0]+'之风) '+jp(sx.text),'sys');
+  }
+}
+
+// —— NPC 人物库（姓名 / 身份 / 称谓 / 样貌 / 口头禅 / 来路） ——
+const GEN_SURNAMES=['陈','李','柳','苏','陆','裴','宋','宁','魏','崔','刘','周','赵','钱','孙','白','顾','谢','秦','韩','姜','沈','许','温','林','江','云','司马','上官','欧阳','端木','闻人','慕容','百里','东方','独孤','长孙','南宫','轩辕'];
+const GEN_GIVEN_M=['长生','望舒','惊鸿','青云','扶摇','露白','云舟','含章','疏影','闻笛','拾光','横舟','问樵','听松','观澜','知白','守拙','枕流','漱石','藏锋','破军','止戈','怀瑾','握瑜','雪庐','霜序','既白','停云','采芹','青梧','照野','借月','烹茶','扫叶','推舟','抱雪','垂纶','负薪','倚栏'];
+const GEN_GIVEN_F=['青黛','晚晴','素衣','惊雪','照夜','拾月','听雨','拂柳','衔珠','抱琴','簪花','弄影','含烟','如是','清欢','迟暮','浅浅','余音'

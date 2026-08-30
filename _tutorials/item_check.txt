@@ -1,0 +1,18 @@
+﻿悟道茶叶 ITEM 定义: 1
+  line 3661 : 雷。' }, '悟道茶叶':{ type:'material',price:210,desc:'桐叶洲后山的悟道茶树，一芽三叶，值价千金。' }, '紫金砂':{ type:'material',price:95,desc:'雷泽底沙，紫金之色，镇邪引雷。' }, // —— 新增
+悟道茶叶 总提及: 25
+  ctx line 3377 : 。', talk:'我叫白也——你可以当我是个读书人。诗剑皆可入道，可惜我现在这模样……罢了，有酒没有？', likes:['陈年女儿红',【悟道茶叶】], profile:'昔年浩然天下中土十人第一、合道于诗篇的白也——一场大劫后修为尽失，化作孩童，
+  ctx line 3379 : 一途，老夫算是走到头了——可有些路，得有人替后人蹚出来。你若有心，替老夫去看看落魄山那个叫裴钱的小丫头。', likes:['陈年女儿红',【悟道茶叶】], profile:'读书人出身的十境武夫，崔瀺的爷爷，陈平安与裴钱武道的引路人。曾以神人擂鼓式与
+  ctx line 3401 : :30, home:'桐叶洲书院', canKill:false, special:true, teach:['万剑诀'], likes:[【悟道茶叶】,'谷雨钱','草药'], hates:['妖血'], profile:'桐叶洲讲经授剑的先生，最恨
+  ctx line 3402 : anKill:false, special:true, teach:['五雷正法','天象引雷'], likes:['雷击木','紫金砂',【悟道茶叶】], hates:['残魂碎片'], profile:'常年在雷泽引雷淬体的老翁，白发焦卷，脾气如雷
+  ctx line 3404 :  gender:'男', aff:20, home:'大骊贡院', canKill:false, special:true, likes:[【悟道茶叶】,'洞天玉简'], hates:['妖血'], profile:'执掌贡院的老学政，铁面无私，只认文
+  ctx line 3405 : me:'大骊京城', canKill:false, special:true, teach:['剑心通明','浩然剑气'], likes:[【悟道茶叶】,'谷雨钱'], hates:['妖血'], profile:'白帝城城主，浩然天下中土十人之一。棋
+  ctx line 3413 : , gender:'男', aff:20, home:'天机阁', canKill:false, special:true, likes:[【悟道茶叶】,'谷雨钱'], hates:['妖血'], profile:'一支铁口断生死的隐士，算天算地，不算
+  ctx line 3417 : e:'药王谷', canKill:false, special:true, teach:['驯兽术','兽语'], likes:['草药',【悟道茶叶】], hates:['妖血'], profile:'活了不知多少年的老鹿，角上系着符带，说人话、识草
+  ctx line 3426 : 御街','山崖书院'], canKill:false, special:true, quest:'薪火', kin:'师', likes:[【悟道茶叶】,'干粮'], hates:['妖血'], profile:'又称老秀才，十四境合道地利。齐静春、崔
+  ctx line 3432 : 文庙广场'], canKill:false, special:true, quest:'道祖的棋', likes:['脂粉','红鸾绣裙',【悟道茶叶】], profile:'道祖座下三弟子，道祖最喜欢的弟子，青冥天下三位道教掌教之一。最喜欢当月老——
+  ctx line 3433 : , gender:'男', aff:10, home:'龙虎山', canKill:false, special:true, likes:[【悟道茶叶】,'符纸'], profile:'本名余斗，道祖座下二弟子，青冥天下三位道教掌教之一，被阿良称为"道
+  ctx line 3661 :  【悟道茶叶】:{ type:'material',price:210,desc:'桐叶洲后山的悟道茶树，一芽三叶
+  ctx line 4483 :  else if(path==='练气士'){ likePool=['草药','朱砂','符纸','谷雨钱','疗伤丹',【悟道茶叶】]; lootPool=['干粮','草药','朱砂','符纸','妖血','疗伤丹','培元丹']
+  ctx line 4736 : 红。', target:{type:'item', what:'陈年女儿红', need:1}, reward:{exp:180,item:【悟道茶叶】}, turnin:'白也', 
+书院山门 ROOM: 2

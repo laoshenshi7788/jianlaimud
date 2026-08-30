@@ -1,0 +1,11 @@
+{
+  "url": "https://api.z.ai/api/paas/v4/chat/completions",
+  "apiKey": "在这里填你的_API_KEY",
+  "model": "glm-4-flash",
+  "prompt": "继续",
+  "maxRetries": 200,
+  "backoffMs": 1500,
+  "backoffMax": 30000,
+  "timeoutMs": 120000,
+  "history": []
+}

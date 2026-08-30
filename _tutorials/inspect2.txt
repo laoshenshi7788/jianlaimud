@@ -1,0 +1,7 @@
+DRAMA at 615976 | 杨老头 at 628291
+=== 800 chars after 杨老头 ===
+"'杨老头':{\r\n    'yancao':{ entry:true, title:'药铺旱烟',\r\n      lines:[\r\n        '（泥瓶巷的药铺后院，杨老头坐着抽旱烟，烟雾缭绕，竟遮得半边天色都模糊了）',\r\n        '（他看见你，咧嘴一笑，露出一口黄牙）小伙子，我这药铺开了几十年，你猜猜，铺子里这味药，图的是什么？'\r\n      ],\r\n      options:[\r\n        { text:'图的是让人知道，这人间还有人记着病、记着人。', effect:function(){\r\n            gainAff('杨老头',12); player.exp+=35; gainFame(3);\r\n            log('（杨老头眯起眼，笑得像只老狐狸）说得好。这药，就是告诉那些病着的——别怕，人间还没忘。','npc','杨老头');\r\n            logSuccess('好感 +12，经验 +35，侠名 +3。');\r\n        } },\r\n        { text:'图的是个营生——卖药挣钱，天经地义。', effect:function(){\r\n            gainAff('杨老头',8); player.exp+=30;\r\n            log('（他点点头）营生嘛……这话，倒也实在。','npc','杨老头');\r\n            logSuccess('好感 +8，经验 +30。');\r\n        } },\r\n        { text:'图几文药钱呗——开门做生意，不为钱为什么？', effect:function(){\r\n            gainAff('杨老头',-6); player.exp+=12;\r\n            lo"
+first `  }}\r\n];` after yang at: -1
+=== 500 chars after 拱手婉拒 ===
+"拱手婉拒。', effect:function(){ log('（那人脸更红了，讪讪地退了开去。侠名 +1）','sys'); gainFame(1); }}\r\n      ]};\r\n  // —— 文圣：读书人的道理 ——\r\n  '文圣':{\r\n    'dadao':{ entry:true, title:'老秀才的一问',\r\n      cond:function(){ return true; },\r\n      lines:[\r\n        '（穗山脚下，老秀才拍拍身边的石头示意你坐，慢悠悠掏出一个酒葫芦）',\r\n        '（他仰头灌了一口，忽然问）娃儿，你说这世上的道理，是书里的多，还是路走出来的多？'\r\n      ],\r\n      options:[\r\n        { text:'书里的道理是灯，路走出来的才是腿——缺一不可。', effect:function(){\r\n            gainAff('文圣',15); player.exp+=50; gainFame(4);\r\n            log('（老秀才眯眼笑了）好娃儿。灯照"
+文圣 count: 1 at 638320

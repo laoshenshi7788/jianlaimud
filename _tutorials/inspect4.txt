@@ -1,0 +1,4 @@
+=== 500 chars before EVENT_TEMPLATES ===
+" { text:'退是示弱，剑道上没有退字。', effect:function(){\r\n            gainAff('茅小冬',-6); player.exp+=15;\r\n            log('（他轻轻摇头）不懂退，便不懂进。这话，等你撞了南墙再回来想。','npc','茅小冬');\r\n            logSuccess('好感 -6，经验 +15。');\r\n        } },\r\n        { text:'进退之道，存乎一心——先生以为呢？', effect:function(){\r\n            gainAff('茅小冬',12); player.exp+=35;\r\n            log('（他微微一怔，随即笑得更深）好一个\"存乎一心\"。这书，我今日没白翻。','npc','茅小冬');\r\n            logSuccess('好感 +12，经验 +35。');\r\n        } }\r\n      ] }\r\n  }\r\n};\r\n\r\n// —— 突发事件（静态奇遇优先，演尽之后动态生成，绝不重样） ——\r\nconst EVENT_TEMPLATES=[\r\n {id:'robber', "
+first \r\n]; after DRAMA start at: 643475
+"; player.exp+=12;\r\n            log('（他做出一副伤心状）哎哟，扎心了。账房先生都不如你狠——亏得我还想带你入伙。','npc','姜尚真');\r\n            logSuccess('好感 -4，经验 +12。');\r\n        } }\r\n      ] }\r\n  }\r\n];\r\nconst ENC_RECENT=[];\r\nfunction genRandomEvent(zone, ro"

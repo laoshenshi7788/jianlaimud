@@ -1,0 +1,10 @@
+const fs = require('fs'), path = require('path');
+['assets/avatars/male','assets/avatars/female'].forEach(d=>{ fs.mkdirSync(d,{recursive:true}); });
+const maleDir='E:/1/mud/2/男';
+const maleFiles=fs.readdirSync(maleDir).filter(f=>f.endsWith('.png')).sort();
+maleFiles.forEach((f,i)=>{ fs.copyFileSync(path.join(maleDir,f), 'assets/avatars/male/male_'+String(i+1).padStart(2,'0')+'.png'); });
+console.log('男头像:', maleFiles.length, '个');
+const femaleDir='E:/1/mud/2/女';
+const femaleFiles=fs.readdirSync(femaleDir).filter(f=>f.endsWith('.png')).sort();
+femaleFiles.forEach((f,i)=>{ fs.copyFileSync(path.join(femaleDir,f), 'assets/avatars/female/female_'+String(i+1).padStart(2,'0')+'.png'); });
+console.log('女头像:', femaleFiles.length, '个');

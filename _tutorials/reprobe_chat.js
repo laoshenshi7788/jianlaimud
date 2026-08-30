@@ -1,0 +1,11 @@
+const fs = require('fs');
+const L = fs.readFileSync('index.html', 'utf8').split(/\r?\n/);
+const out = [];
+const iPool = L.findIndex(l => l.indexOf('const CHAT_POOL') > -1);
+const iEnd = L.findIndex(l => l.indexOf('function openChatTopics') > -1);
+const iCS = L.findIndex(l => l.indexOf('function chatSmall') > -1);
+const iCW = L.findIndex(l => l.indexOf('function chatWithNpc') > -1);
+out.push('CHAT_POOL@' + (iPool + 1) + '  openChatTopics@' + (iEnd + 1) + '  chatSmall@' + (iCS + 1) + '  chatWithNpc@' + (iCW + 1));
+for (let j = iEnd - 4; j < iEnd + 2; j++) out.push((j + 1) + ': ' + L[j].trim().slice(0, 110));
+require('fs').writeFileSync('_tutorials/_chat2.txt', out.join('\n'));
+console.log('ok');

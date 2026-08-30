@@ -1,0 +1,15 @@
+const fs=require('fs');
+const h=fs.readFileSync('E:/1/mud/2/JianLai mud/index.html','utf8');
+const out=[];
+const d=h.indexOf('const DRAMA={');
+const yang=h.indexOf("'杨老头':{", d);
+out.push('DRAMA at '+d+', 杨老头 at '+yang);
+const yClose=h.indexOf('];', yang);
+out.push('=== after 杨老头 first ]; ===');
+out.push(JSON.stringify(h.slice(yClose-280, yClose+40)));
+out.push('=== around 638100-638420 ===');
+out.push(JSON.stringify(h.slice(638100, 638420)));
+const et=h.indexOf('EVENT_TEMPLATES=');
+out.push('EVENT_TEMPLATES at '+et+': '+JSON.stringify(h.slice(et, et+70)));
+fs.writeFileSync('E:/1/mud/2/JianLai mud/_tutorials/inspect.txt', out.join('\n'), 'utf8');
+console.log('done');
