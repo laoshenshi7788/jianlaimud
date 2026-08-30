@@ -2,7 +2,6 @@
   "name": "jianlaimud",
   "compatibility_date": "2026-08-30",
   "assets": {
-    "directory": ".",
-    "exclude": [".git/**", "node_modules/**"]
+    "directory": "."
   }
 }
