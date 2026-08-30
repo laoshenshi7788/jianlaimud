@@ -10435,14 +10435,17 @@ function daoTransfer(p, amount){
 }
 function changeMainPath(p){
   if(p===player.path){ log('（你如今走的正是此道）','sys'); return; }
-  const cost=(game.pathChanged||0)?500:100;
-  if(player.gold<cost){ log('（改换门庭需 '+cost+' 两——你囊中羞涩）','sys'); return; }
-  player.gold-=cost;
+  const first= player.path==null; // 凡人未入道：首次择途分文不取
+  const cost= first?0:((game.pathChanged||0)?500:100);
+  if(cost>0){
+    if(player.gold<cost){ log('（改换门庭需 '+cost+' 两——你囊中羞涩）','sys'); return; }
+    player.gold-=cost;
+  }
   player.path=p;
-  game.pathChanged=(game.pathChanged||0)+1;
-  logTitle('—— 改 换 门 庭 ——');
+  if(!first) game.pathChanged=(game.pathChanged||0)+1;
+  logTitle('—— '+(first?'初 入 道 途':'改 换 门 庭')+' ——');
   logInfo('（自此你以「'+p+'」一脉为正道。'+PATHS[p].tag+'）');
-  logItem('花费 '+cost+' 两。');
+  logItem(cost>0?('花费 '+cost+' 两。'):('（分文未取——择途是你自己的事。）'));
   updateSidebar();
 }
 /* ================================================================
@@ -10457,9 +10460,10 @@ const ORIGIN_POOL={
   '练气士':{ names:['青莲','照夜珠','紫府玉简','云纹宝珠','山河印','镇魂铃','墨玉如意'], atk:3, mp:12, skill:0.035, cost:50, desc:'本命之物——与道行同源，温养日久自成法宝，术法愈发通玄。' },
   '体修':{ names:['武运·气血如龙','武运·武道真意','武运·拳意冲霄','武运·骨中雷音','武运·金刚不坏'], atk:5, hp:24, def:4, cost:70, desc:'武运——纯粹武夫的本命武道真意，越战越强，气血如江河。' }
 };
-function originKind(){ return player.path==='剑修'?'剑修':(player.path==='体修'?'体修':'练气士'); }
+function originKind(){ if(player.path==null) return null; return player.path==='剑修'?'剑修':(player.path==='体修'?'体修':'练气士'); }
 function ensureOrigin(){
   const k=originKind();
+  if(!k) return null; // 未入道者：尚无本命可言——入道且境界达标后自然凝形
   if(player.origin) return player.origin;
   if(player.level<3) return null; // 未达凝形门槛
   const pool=ORIGIN_POOL[k];
@@ -10620,7 +10624,8 @@ function openCultPanel(){
         openCultPanel();
       });
       box.appendChild(tr);
-      const ch=document.createElement('button'); ch.className='btn small'; ch.textContent='改换门庭('+((game.pathChanged||0)?500:100)+'两)';
+      const ch=document.createElement('button'); ch.className='btn small';
+      ch.textContent= player.path==null ? '就此入道（首次免费）' : '改换门庭('+((game.pathChanged||0)?500:100)+'两)';
       ch.addEventListener('click',function(){ changeMainPath(p); openCultPanel(); });
       box.appendChild(ch);
       if(daoExpOf(p)>0){
@@ -18856,7 +18861,7 @@ function loadGame(slot){
     if(!game.talkFatigue) game.talkFatigue={};
     if(!game.lastBulletin) game.lastBulletin=[];
     if(!game.daoExp) game.daoExp={练气士:0,剑修:0,体修:0};
-    if(!player.path) player.path='练气士';
+    if(player.path===undefined) player.path='练气士'; // 旧档迁移；null=有意未入道（凡人），不得覆盖
     if(!player.estates) player.estates=[];
     if(!player.workers) player.workers=[];
     if(!game.pathChanged) game.pathChanged=0;
@@ -19111,16 +19116,7 @@ const BACKGROUNDS=[
   intro:'（你打小在云来客栈跑堂。南来北往的人都在你面前卸下行囊——他们说过的闲话，够你说三年。）',
   aff:{'店小二':10}}
 ];
-const START_REALMS=[
- {lv:1, name:'凡夫俗子', cost:0, infamy:0, note:'粗茶淡饭，白手起家——江湖很大，你也还小。'},
- {lv:3, name:'武夫·木胎境', cost:100, infamy:0, note:'炼体三境之二：体魄由粗入细，肌肤纹理精密如篆刻——纯粹武夫的路，从挨打开始。'},
- {lv:6, name:'武夫·水银境', cost:300, infamy:0, note:'炼体三境之三：血液浓稠如水银，气血凝聚合一——武运初显，越战越勇。'},
- {lv:7, name:'练气·柳筋境', cost:300, infamy:0, note:'下五境之三：筋如柳丝，气走周身——木秀于林，自有识货之人高看你一眼。'},
- {lv:8, name:'剑修·凝剑胚', cost:500, infamy:0, note:'以心御剑，剑胚初凝——本命飞剑的路，从一粒剑胚开始。剑胚有灵，江湖上已有人想与你论剑。'},
- {lv:9, name:'练气·骨气境', cost:800, infamy:0, note:'下五境之四：造就千金重骨，方有一两气——这般年纪有如此根基，走到哪里都有人争着与你结交。'},
- {lv:12, name:'武夫·雄魄境', cost:1200, infamy:0, note:'炼气三境之二：英魂雄魄，气血如江河奔涌——已是江湖中响当当的人物，走到哪里都有人让三分。'},
- {lv:15, name:'剑修·生剑心', cost:2000, infamy:0, note:'剑心通明，本命飞剑与心湖相映——名动一方的剑客，自此便是你。'}
-];
+// （旧 START_REALMS 已废：初始境界现随职业门控，见 STARTUP_CLASSES / startupRealmsFor）
 // —— 高境界入世：江湖人脉由生成器孕育（相识故人 / 敬重前辈 / 或有追随者） ——
 // —— 开局匹配包：按出身 / 境界统一生成 关系网 + 装备 + 道具 + 盘缠 ——
 function genStartupPackage(lv, bg){
@@ -19226,6 +19222,15 @@ function genStartupPackage(lv, bg){
   if(tier>=3) addItem('培元丹');
   if(player.path==='剑修'||player.path==='练气士') addItem('符纸');
   if(player.path==='体修') addItem('兽皮');
+  // 兵刃随职业：武夫用刀/锤（对接兵器六类），剑修练气用剑；再配一门相合的入门功法
+  try{
+    if(player.path==='体修'){
+      const _sw=startupWeaponFor(player.path, lv);
+      if(_sw) player.equipment.weapon=_sw; // 武夫不走佩剑，覆盖境界档的默认剑
+    }
+    const _ss=startupSkillFor(player.path);
+    if(_ss && SKILLS[_ss] && player.skills.indexOf(_ss)===-1) player.skills.push(_ss);
+  }catch(e){}
   // ========== 4) 盘缠：境界越高，闯江湖的底子越厚 ==========
   if(tier>=1) player.gold+= 50;
   if(tier>=2) player.gold+=150;
@@ -19234,6 +19239,7 @@ function genStartupPackage(lv, bg){
   return 1;
 }
 // —— 资质走向（剑来路数）：练气士通术法、纯粹武夫熬筋骨、剑修走轻灵、读书人养浩然 ——
+//    （入世后仍作「自动加点策略」用；开局改为职业 + 自由加点，见 STARTUP_CLASSES）
 const STARTUP_BUILDS=[
  {id:'浩然', desc:'六维皆修，浩然之气周流不息——不偏不倚，方是长久之道。', order:null},
  {id:'纯粹武夫', desc:'根骨·体力为纲——不修术法，只熬筋骨；站得住，才打得赢。', order:['gengu','gengu','tili']},
@@ -19242,7 +19248,53 @@ const STARTUP_BUILDS=[
  {id:'读书人', desc:'魅力·智慧为纲——书生养浩然气，一言一行，皆是道理。', order:['meili','meili','zhihui']},
  {id:'散修', desc:'10 点属性留到入江湖后再定——无门无派，随缘而行。', order:null}
 ];
-let _startup={spot:'mud', bg:null, build:'浩然', lv:1, legacy:null, name:'', gender:'男', portrait:0};
+// —— 职业（道途）：定正道，门控初始境界。可择「凡人（未入道）」——入世后再定何途 ——
+const STARTUP_CLASSES=[
+ {id:'wuren', name:'凡人（未入道）', path:null, tag:'红尘炼心，万法由己',
+  desc:'尚未入道的凡人。江湖之大，先从一介布衣做起——何时入道、入何道，入世后于「修炼」面板随时可定（首次入道不花钱）。'},
+ {id:'lianqi', name:'练气士', path:'练气士', tag:PATHS['练气士'].tag,
+  desc:'引天地元气浇筑皮肉筋骨血，登登山十五重楼——气府绵长，术法通玄，问道长生。'},
+ {id:'wufu', name:'纯粹武夫', path:'体修', tag:PATHS['体修'].tag,
+  desc:'不假外物，熬打筋骨——炼体三境、炼气三境、炼神三境，一步一步走上武道山巅。'},
+ {id:'jianxiu', name:'剑修', path:'剑修', tag:PATHS['剑修'].tag,
+  desc:'以心御剑，一剑破万法——养剑意、凝剑胚、生剑心，剑道一途，唯有一剑。'}
+];
+// —— 初始境界：随职业门控（无代价：不折银两、不损名望，境界名皆出剑来原著）——
+//    每道取前六重楼；rung.i 对应 REALMS 下标，入世后显示名与 PATHS[职业].realms 一致
+const STARTUP_POINTS=10; // 自由加点预算
+const STARTUP_RUNGS=6;   // 每职业可选的初始境界层数
+function startupRealmsFor(clsId){
+  const cls=STARTUP_CLASSES.find(function(c){ return c.id===clsId; });
+  if(!cls || cls.path==null){
+    return [{i:0, lv:1, name:'凡夫俗子', note:'粗茶淡饭，白手起家——江湖很大，你也还小。未入道者，先做个凡人。'}];
+  }
+  const arr=PATHS[cls.path].realms;
+  const out=[];
+  for(let i=0;i<Math.min(STARTUP_RUNGS,arr.length);i++){
+    out.push({i:i, lv:REALMS[i].lv, name:arr[i], note:REALMS[i].fl});
+  }
+  return out;
+}
+// —— 开局兵刃随职业：武夫用刀/锤，剑修与练气士用剑（对接兵器六类与功法适配）——
+function startupWeaponFor(path, lv){
+  const cls= path==='体修' ? (lv>=9?'锤':'刀') : '剑';
+  const TIERS={'凡品':1,'良品':4,'珍品':8,'绝品':13,'仙品':19,'造化品':26};
+  let best=null;
+  for(const k in ITEM_GEN){
+    const it=ITEM_GEN[k];
+    if(!it || it.type!=='weapon' || it.wclass!==cls) continue;
+    const need=TIERS[it.quality]||1;
+    if(need<=lv && (!best || it.atkBonus>best.atkBonus)) best=it;
+  }
+  return best?Object.keys(ITEM_GEN).find(function(k){ return ITEM_GEN[k]===best; }):null;
+}
+// —— 开局功法随职业：凡品入门功法（兵器与功法适配：刀配刀法×1.25）——
+function startupSkillFor(path){
+  if(path==='体修') return '破风刀法';
+  if(path==='剑修') return '青虹剑诀';
+  return null; // 凡人/练气士：市井拳脚已足，拳脚与符箓之路入世再学
+}
+let _startup={spot:'mud', bg:null, cls:'wuren', realmIdx:0, alloc:{}, trait:null, legacy:null, name:'', gender:'男', portrait:0};
 /* ===== 20个基础容貌（10男10女） ===== */
 const PORTRAITS=[
   // 男 0-9
@@ -19307,7 +19359,7 @@ function renderStartupPage(){
   const savedScroll=scr?scr.scrollTop:0;
   h.innerHTML='';
   const head=document.createElement('div'); head.style.cssText='color:var(--ink-color);opacity:.85;font-size:.74em;line-height:1.7;margin-bottom:8px;text-align:center;';
-  head.innerHTML='<b style="color:var(--title-color);letter-spacing:3px;">一朝入江湖 · 三分由命，七分自择</b><br>（出生之地定风土，出身定人脉，资质定走向，境界定起点——拣好了，点「下一步」就此入世。）';
+  head.innerHTML='<b style="color:var(--title-color);letter-spacing:3px;">一朝入江湖 · 三分由命，七分自择</b><br>（出生之地定风土，出身定人脉，职业定道途，境界定起点——拣好了，点「下一步」就此入世。）';
   h.appendChild(head);
   const warn=document.createElement('div'); warn.id='ss-warn';
   warn.style.cssText='display:none;color:#ffb9a4;background:rgba(176,58,46,.18);border:1px solid rgba(217,79,61,.5);border-radius:6px;padding:6px 10px;font-size:.74em;margin:6px 0;';
@@ -19420,21 +19472,75 @@ function renderStartupPage(){
     return mkRow('「'+bg.name+'」', (pk?pk+'　':'')+(ex||'')+affN+'——'+bg.desc, _startup.bg===bg.id, function(){ _startup.bg=bg.id; });
   });
   sec('二 · 出身（'+curSpot.name+'）', bgRows.length?bgRows:[mkRow('（先择出生之地，再定出身）','',false,function(){})]);
-  // —— 三 · 资质走向（10 点） ——
-  const bdRows=STARTUP_BUILDS.map(function(b){
-    return mkRow(b.id, b.desc, _startup.build===b.id, function(){ _startup.build=b.id; });
+  // —— 三 · 职业（道途）：定正道，门控初始境界 ——
+  const clsRows=STARTUP_CLASSES.map(function(c){
+    return mkRow('「'+c.name+'」', '【'+c.tag+'】'+c.desc, _startup.cls===c.id, function(){
+      if(_startup.cls!==c.id){ _startup.cls=c.id; _startup.realmIdx=0; _startup.alloc={}; }
+    });
   });
-  sec('三 · 资质走向（初始 10 点）', bdRows);
-  // —— 四 · 初始境界 ——
-  const lvRows=START_REALMS.map(function(s){
-    const parts=[];
-    if(s.cost>0) parts.push('银两 -'+s.cost);
-    if(s.infamy>0) parts.push('恶名 +'+s.infamy);
-    const costTxt= parts.length?('（'+parts.join('、')+'）'):'（无代价）';
-    return mkRow(s.name, costTxt+' '+s.note.slice(0,18)+'……', _startup.lv===s.lv, function(){ _startup.lv=s.lv; });
+  sec('三 · 职业（道途）', clsRows);
+  // —— 四 · 初始境界（随职业门控 · 无代价）——
+  const curCls=STARTUP_CLASSES.find(function(c){ return c.id===_startup.cls; })||STARTUP_CLASSES[0];
+  const rungs=startupRealmsFor(_startup.cls);
+  if(_startup.realmIdx>=rungs.length) _startup.realmIdx=0;
+  const lvRows=rungs.map(function(rg,ix){
+    const lvTxt= rg.lv>1 ? '第'+rg.lv+'层修为入世' : '白手起家';
+    return mkRow('「'+rg.name+'」', '【'+lvTxt+' · 无代价】'+rg.note, _startup.realmIdx===ix, function(){ _startup.realmIdx=ix; });
   });
-  sec('四 · 初始境界', lvRows);
-  // 五 · 与前辈之缘（传世名录）
+  sec('四 · 初始境界（'+curCls.name+'）', lvRows);
+  // —— 五 · 根骨加点（自由分配，未分完的随身带入江湖）——
+  _startup.alloc=Object.assign({gengu:0,tili:0,zhihui:0,minjie:0,jiyuan:0,meili:0}, _startup.alloc||{});
+  const spentAll=ATTR_KEYS.reduce(function(s,k){ return s+(_startup.alloc[k]||0); },0);
+  const leftN=Math.max(0, STARTUP_POINTS-spentAll);
+  const allocSec=document.createElement('div');
+  const allocHead=document.createElement('div'); allocHead.style.cssText='color:var(--title-color);font-size:.7em;letter-spacing:2px;margin:10px 0 4px;opacity:.9;';
+  allocHead.textContent='— 五 · 根骨加点（自由 '+STARTUP_POINTS+' 点 · 余 '+leftN+' 点） —';
+  allocSec.appendChild(allocHead);
+  const allocTip=document.createElement('div'); allocTip.style.cssText='color:#c6bca6;font-size:.68em;line-height:1.7;margin:0 0 6px;padding:0 4px;';
+  allocTip.textContent='（一点一砝码，各归其位——没分完的点会随身带进江湖，入世后可于「属性」面板继续分，或交给自动加点。）';
+  allocSec.appendChild(allocTip);
+  ATTR_KEYS.forEach(function(k){
+    const row=document.createElement('div'); row.className='list-row';
+    row.innerHTML='<span class="lname">'+ATTR_META[k][0]+'　'+(_startup.alloc[k]||0)+'</span><span class="lmeta">'+ATTR_META[k][1]+'</span>';
+    const wrap=document.createElement('span'); wrap.style.cssText='display:flex;gap:4px;';
+    const bm=document.createElement('button'); bm.className='btn small'; bm.textContent='−'; bm.disabled=!(_startup.alloc[k]>0);
+    bm.addEventListener('click',function(){ if(_startup.alloc[k]>0){ _startup.alloc[k]--; renderStartupPage(); } });
+    const bp=document.createElement('button'); bp.className='btn small green'; bp.textContent='＋'; bp.disabled=leftN<=0;
+    bp.addEventListener('click',function(){ if(leftN>0){ _startup.alloc[k]=(_startup.alloc[k]||0)+1; renderStartupPage(); } });
+    wrap.appendChild(bm); wrap.appendChild(bp);
+    row.appendChild(wrap);
+    allocSec.appendChild(row);
+  });
+  // 快捷方略：一键按资质走向分满（也可清空自由来）
+  const presetRow=document.createElement('div'); presetRow.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:8px 2px 2px;';
+  STARTUP_BUILDS.filter(function(b){ return b.id!=='散修'; }).forEach(function(b){
+    const pb=document.createElement('button'); pb.className='btn small'; pb.title=b.desc;
+    pb.textContent='按「'+b.id+'」分满';
+    pb.addEventListener('click',function(){
+      _startup.alloc={gengu:0,tili:0,zhihui:0,minjie:0,jiyuan:0,meili:0};
+      const order=b.order||ATTR_KEYS;
+      let i=0;
+      for(let n=0;n<STARTUP_POINTS;n++){ _startup.alloc[order[i%order.length]]++; i++; }
+      renderStartupPage();
+    });
+    presetRow.appendChild(pb);
+  });
+  const clr=document.createElement('button'); clr.className='btn small danger'; clr.textContent='清空重来';
+  clr.addEventListener('click',function(){ _startup.alloc={gengu:0,tili:0,zhihui:0,minjie:0,jiyuan:0,meili:0}; renderStartupPage(); });
+  presetRow.appendChild(clr);
+  allocSec.appendChild(presetRow);
+  h.appendChild(allocSec);
+  // —— 六 · 天命特质（可先定一条，亦可不选）——
+  const traitRows=Object.keys(TRAITS).map(function(id){
+    const t=TRAITS[id];
+    return mkRow('「'+t.name+'」', fateLabel(t.mods)+'（有得有失）——'+t.desc.slice(0,26)+'…', _startup.trait===id, function(){ _startup.trait=(_startup.trait===id?null:id); });
+  });
+  sec('六 · 天命特质（可先定一条 · 不选亦可）', traitRows);
+  const traitTip=document.createElement('div');
+  traitTip.style.cssText='color:#c6bca6;font-size:.68em;line-height:1.7;padding:2px 8px 6px;';
+  traitTip.textContent='（命数终身两条：此间先定一条，另一条入世后于「道痕」面板再定。特质各有得失——江湖没有白占的便宜。）';
+  h.appendChild(traitTip);
+  // 七 · 与前辈之缘（传世名录）
   const lgList=loadLegacies();
   if(lgList.length){
     const lgRows=lgList.map(function(l){
@@ -19450,7 +19556,7 @@ function renderStartupPage(){
       row.appendChild(b);
       return row;
     });
-    sec('五 · 与前辈之缘（传世名录上的故人）', lgRows);
+    sec('七 · 与前辈之缘（传世名录上的故人）', lgRows);
   }
   // 提示与「下一步」状态
   const nextBtn=document.getElementById('ss-next');
@@ -19475,9 +19581,12 @@ function hideStartupScreen(){
   if(ss) ss.classList.remove('show');
   document.body.classList.remove('menu-mode');
 }
-function applyStartup(bgId, build, lv){
+function applyStartup(bgId){
   const bg=BACKGROUNDS.find(function(b){ return b.id===bgId; });
   if(!bg) return;
+  const cls=STARTUP_CLASSES.find(function(c){ return c.id===_startup.cls; })||STARTUP_CLASSES[0];
+  // 职业（道途）：定正道；null=凡人未入道——入世后「修炼」面板首次入道免费
+  player.path=cls.path;
   const spot=START_SPOTS.find(function(s){ return s.id===bg.spot; })||START_SPOTS[0];
   player.background=bg.id; player.bgName=bg.name;
   player.birthPlace=spot.id; player.birthPlaceName=spot.name;
@@ -19493,21 +19602,27 @@ function applyStartup(bgId, build, lv){
   if(bg.perks) for(const k in bg.perks){ if(!player.attrs) player.attrs={}; player.attrs[k]=(player.attrs[k]||0)+bg.perks[k]; }
   // 故人缘：出生之地的熟识
   if(bg.aff) for(const n in bg.aff){ player.aff[n]=(player.aff[n]||0)+bg.aff[n]; }
-  // 初始资质走向
-  if(build==='散修'){ player.attrPts=(player.attrPts||0)+10; }
-  else { player.attrBuild=build; if(!player.attrPts) player.attrPts=0; player.attrPts+=10; autoAllocateAttrs(); }
-  // 初始境界
-  const st=START_REALMS.find(function(s){ return s.lv===lv; })||START_REALMS[0];
-  if(lv>1){
-    player.level=lv;
-    player.realm=realmIndexByLevel(); // 高境入世：直接以该境界起始（等价已破境）
-    for(let r=0;r<=realmIndex();r++){ const b=REALMS[r].b; player.maxHp+=b.hp; player.maxMp+=b.mp; player.atk+=b.atk; player.def+=b.def; }
-    player.gold=Math.max(0,player.gold-(st.cost||0));
-    game.infamy=(game.infamy||0)+(st.infamy||0);
-  }
+  // 根骨加点：开局自由分配的落账；没分完的随身带入江湖
+  if(!_startup.alloc) _startup.alloc={};
+  let spentN=0;
+  ATTR_KEYS.forEach(function(k){
+    const v=_startup.alloc[k]||0;
+    if(v>0){ if(!player.attrs) player.attrs={}; player.attrs[k]=(player.attrs[k]||0)+v; spentN+=v; }
+  });
+  player.attrPts=(player.attrPts||0)+Math.max(0, STARTUP_POINTS-spentN);
+  player.attrBuild=({wufu:'纯粹武夫',lianqi:'练气士',jianxiu:'剑修'})[cls.id]||'浩然'; // 自动加点默认策略随职业
+  // 初始境界（随职业门控 · 无代价：不折银两、不损名望）
+  const rungs=startupRealmsFor(_startup.cls);
+  const ri=Math.max(0, Math.min(_startup.realmIdx||0, rungs.length-1));
+  const rung=rungs[ri];
+  player.level=rung.lv;
+  player.realm=rung.i; // 入世即该境——层数随修为涨，破境另有五途
+  for(let r=0;r<=rung.i;r++){ const b=REALMS[r].b; player.maxHp+=b.hp; player.maxMp+=b.mp; player.atk+=b.atk; player.def+=b.def; }
+  // 天命特质：开局可先定一条（另一条入世后于「道痕」面板再定）
+  player.traits= _startup.trait? [ _startup.trait ] : [];
   // 开局人际网：无论出身贵贱、境界高低，都该有街坊故旧——
   // 普通开局同样由生成器孕育人脉（同乡故交/久闻之名/受惠之人），境界越高认得你的人越多
-  try{ genStartupPackage(lv, bg); }catch(e){}
+  try{ genStartupPackage(player.level, bg); }catch(e){}
   player.hp=player.maxHp; player.mp=player.maxMp;
   // 名字、性别、容貌
   if(_startup.name && _startup.name.trim()){
@@ -19530,8 +19645,15 @@ function applyStartup(bgId, build, lv){
   logDiv(); logTitle('—— 入 世 · '+bg.name+' ——');
   logInfo(bg.intro);
   if(spot.zone==='险地') logInfo('（此地位于'+spot.zone+'——风沙磨骨之地，出门便是刀光剑影，行事当多一分谨慎。）');
-  if(lv>1) logInfo('（'+st.name+'起步：'+st.note+'）');
-  if(build!=='散修') logInfo('（初始 10 点属性，已按「'+build+'」之策归于自身。）');
+  if(cls.path) logInfo('（你走「'+cls.name+'」一途——'+PATHS[cls.path].tag+'。初始境界「'+rung.name+'」，不折一钱。）');
+  else logInfo('（你尚未入道，以凡人之身闯荡江湖——「修炼」面板里随时可择一途，首次入道分文不取。）');
+  if(player.level>1) logInfo('（'+rung.name+'起步——'+rung.note+'）');
+  if(spentN>0 || player.attrPts>0){
+    let s='（根骨归身：'+spentN+' 点已锤炼入体';
+    if(player.attrPts>0) s+='，另携 '+player.attrPts+' 点待分——「属性」面板随时可点';
+    logInfo(s+'。）');
+  }
+  if(_startup.trait) logInfo('（天命特质「'+TRAITS[_startup.trait].name+'」与你如影随形。其余命数，入世后于「道痕」面板再定。）');
   // 主线引导：通用主线——生于何处，便从何处启程（不再强引至骊珠小镇）
   {
     const _homeCheng=CHENG_CFG[ROOMS[player.room]?ROOMS[player.room].area:''];
@@ -19539,8 +19661,8 @@ function applyStartup(bgId, build, lv){
     logQuest('（你生于「'+_homeName+'」——江湖之大，处处可启程。主线随你脚下走：详见「任务与剧情」的指引，升至 2 级或闯出侠名，便是第一步。）');
     if(player.room==='泥瓶巷') logQuest('（巷口白衣先生齐静春负手而立——他那儿有一桩「骊珠旧事」长支线，可听可不听，全凭你。）');
   }
-  // 初始道途之本命：达标即凝（剑修凝剑胚 / 练气士本命物 / 武夫武运）
-  if(lv>=4 || build==='剑修' || build==='练气士' || build==='纯粹武夫'){
+  // 初始道途之本命：入道且境界达标即凝（剑修凝剑胚 / 练气士本命物 / 武夫武运）
+  if(cls.path && player.level>=4){
     try{ ensureOrigin(); }catch(e){}
   }
   try{ saveGame(); }catch(e){}
@@ -21466,7 +21588,7 @@ document.getElementById('btn-fate').addEventListener('click',openFatePanel);
       if(warn){ warn.textContent='※ 出身尚未择定——出生之地既已选好，请在下方「二 · 出身」一栏择一。'; warn.style.display='block'; }
       return;
     }
-    applyStartup(_startup.bg, _startup.build, _startup.lv);
+    applyStartup(_startup.bg);
   });
   // 设置
   loadSettings();
