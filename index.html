@@ -3709,6 +3709,9 @@ const ITEMS_EXPANDED={
   '雪莲王':{type:'material',price:760,quality:'仙品',desc:'雪莲千年成王，一根须便抵一园雪莲。'}
 };
 Object.keys(ITEMS_EXPANDED).forEach(function(k){ if(!ITEMS[k]) ITEMS[k]=ITEMS_EXPANDED[k]; });
+ITEMS['寒潭雪鱼']={type:'consumable',effect:'heal',value:100,price:110,quality:'珍品',desc:'珍品·寒潭雪鱼。生于冰下，肉白如雪（恢复100生命）。'};
+ITEMS['龙王鲟']={type:'consumable',effect:'heal',value:300,price:400,quality:'仙品',desc:'仙品·龙王鲟。传说是龙王的后裔——一鱼抵百菜（恢复300生命）。'};
+ITEMS['碧波仙鲤']={type:'consumable',effect:'mana',value:200,price:350,quality:'仙品',desc:'仙品·碧波仙鲤。碧波仙子亲手放生的灵鲤，食之内力翻涌（内力+200）。'};
 // —— 功法被动：习得上乘功法，气力自然水涨船高（乘区上限两成） ——
 const SKILLS_PASSIVE={
   '市井拳脚':{paDef:0.01},
@@ -11330,6 +11333,10 @@ function openReputePanel(){
   const h=document.createElement('div');
   h.style.cssText='font-size:.8em;color:#ffffff;';
   const head=document.createElement('div'); head.style.cssText='text-align:center;margin-bottom:8px;';
+  // 宗门显学+身份
+  const sInfo=document.createElement('div'); sInfo.style.cssText='color:#e8d8a0;font-size:.74em;margin-top:4px;line-height:1.7;';
+  sInfo.innerHTML='<b>'+s.type+'显学</b> · '+sectRankName()+'<br><span style="color:#b8b8c0;font-size:.92em;">'+s.desc+'</span>';
+  head.appendChild(sInfo);
   head.innerHTML='<div style="color:#ffffff;letter-spacing:6px;font-size:1.05em;">『 '+r.tag+' 』</div>'+
     '<div style="color:#b8b8c0;font-size:.7em;margin-top:4px;">'+(REPUTE_TAGS[r.tag]||'')+'</div>'+
     '<div style="margin-top:6px;"><span class="chip green">侠名 '+game.fame+'</span><span class="chip red">恶名 '+game.infamy+'</span>'+(game.reputeFlips?'<span class="chip">翻覆 x'+game.reputeFlips+'</span>':'')+'</div>';
@@ -13244,9 +13251,8 @@ function openChronicle(){
    ================================================================ */
 const STONE_RATE=100; // 原著数据点：1雪花钱≈100两白银（三十多张烧煞符，每张约三两）；1小暑钱=1000雪花钱；1谷雨钱=100小暑钱
 function fmtMoney(n){
-  if(n>=100000) return Math.floor(n/10000)+'万'+((Math.floor(n/1000)%10)?'.'+Math.floor(n/1000)%10+'千':'')+'两';
-  if(n>=10000) return Math.floor(n/1000)+'千'+((n%1000>=100)?Math.floor((n%1000)/100)+'百':'')+'两';
-  return n+'两';
+  if(n>=100000) return (n/10000).toFixed(1).replace(/\.0$/,'')+'万两白银';
+  return n+'两白银';
 }
 function marketTrendNoise(){
   const wave=Math.sin(game.turns*0.7)*0.06+Math.sin(game.turns*0.23)*0.05;
@@ -14755,10 +14761,18 @@ function practiceCalligraphy(){
 // ============ 新手引导：出生地感知（不硬绑泥瓶巷——所有出身通用） ============
 if(!game.tutFlags) game.tutFlags={};
 function tutMentor(){
-  // 找出生地附近的一位 special NPC 当引路人，找不到就退回泛称
+  // 三级搜索：出生地 special NPC → 出生地任意 NPC → 同城 special NPC
   const base=homeRoom();
-  const near=Object.keys(NPCS).find(function(n){ return NPCS[n].special && NPCS[n].home===base; });
-  return near||null;
+  const area=ROOMS[base]?ROOMS[base].area:null;
+  let hit=Object.keys(NPCS).find(function(n){ return NPCS[n].special && NPCS[n].home===base; });
+  if(hit) return hit;
+  hit=Object.keys(NPCS).find(function(n){ return NPCS[n].home===base; });
+  if(hit) return hit;
+  if(area){
+    hit=Object.keys(NPCS).find(function(n){ return NPCS[n].special && NPCS[n].home && ROOMS[NPCS[n].home] && ROOMS[NPCS[n].home].area===area; });
+    if(hit) return hit;
+  }
+  return null;
 }
 function tutMentorName(){ return tutMentor()||'师长'; }
 const TUT_STEPS=[
@@ -14770,6 +14784,7 @@ const TUT_STEPS=[
   {hint:function(){ return '（人在江湖，难免动手——遇敌时记住：回合制，出招、守御、逃走都在下方，打不过就跑。）'; }, done:function(){ return game.tutFlags.fight; }, rw:function(){ return '（打不打得过是本事，该不该打是学问。）'; }},
   {hint:function(){ return '（身无立锥之地，终究是浮萍——攒够银两，去「家园」置办一处安身的宅子。）'; }, done:function(){ return (player.manor&&player.manor.tier>=1); }, rw:function(){ return '（有了家，江湖才算有了根。）'; }}
 ];
+function tutHintText(s){ return typeof s.hint==='function'?s.hint():s.hint; }
 function tutHint(){
   if(game.tutDone||game.tutSkip) return;
   if(player.level>6){ game.tutDone=1; return; }
@@ -14797,14 +14812,14 @@ function tutHint(){
     tb.innerHTML='';
     const sp=document.createElement('span'); sp.className='tut-tip tb-d';
     sp.style.cssText='color:#e8d8a0;';
-    sp.textContent=TUT_STEPS.filter(function(s){return !s._done;})[0].hint;
+    sp.textContent=tutHintText(TUT_STEPS.filter(function(s){return !s._done;})[0]);
     const sk=document.createElement('button'); sk.className='btn small'; sk.textContent='✕ 不必引路';
     sk.addEventListener('click',function(){ game.tutSkip=1; tb.innerHTML=''; logInfo('（你辞谢了引路——江湖路，自己闯。）'); });
     tb.appendChild(sp); tb.appendChild(sk);
   } else {
     const sp=tb.querySelector('.tut-tip');
     const cur2=TUT_STEPS.filter(function(s){return !s._done;})[0];
-    if(cur2) sp.textContent=cur2.hint;
+    if(cur2) sp.textContent=tutHintText(cur2);
   }
 }
 // ============ 经营扩充三：畜栏养殖 / 烹饪菜谱 / 门派俸禄 ============
@@ -15094,6 +15109,105 @@ Object.keys(QUESTS_REWARDS).forEach(function(k){ if(!QUESTS[k]) QUESTS[k]=QUESTS
 [['慧明方丈','慧明方丈的抄经册'],['张天师','张天师的符纸'],['北俱剑隐','剑隐的寒铁矿'],['裴钱','裴钱的碗'],['崔东山','崔东山的赌约']].forEach(function(p){
   if(NPCS[p[0]] && !NPCS[p[0]].quest) NPCS[p[0]].quest=p[1];
 });
+// ============ 经营扩充五：养殖扩充/菜谱扩充/锻造扩充/炼丹扩充/垂钓扩充/新材料/新装备 ============
+// —— 养殖新动物 ——
+Object.assign(LIVESTOCK_DEFS,{
+  '猪':{cost:300, feed:15, out:'猪肉', every:6, outN:2, sell:400},
+  '牛':{cost:500, feed:25, out:'牛乳', every:4, outN:2, sell:650},
+  '马':{cost:800, feed:20, out:'马奶', every:8, outN:1, sell:1200},
+  '灵鹿':{cost:1200, feed:30, out:'鹿茸', every:10, outN:1, sell:2000},
+  '妖禽':{cost:600, feed:12, out:'妖禽羽', every:6, outN:1, sell:900}
+});
+ITEMS['猪肉']={type:'consumable',effect:'heal',value:25,price:22,desc:'自家养的肥猪，割一块好肉（恢复25生命）。'};
+ITEMS['牛乳']={type:'consumable',effect:'mana',value:30,price:26,desc:'自家奶牛挤的鲜乳，滋养内力（恢复30内力）。'};
+ITEMS['马奶']={type:'consumable',effect:'mana',value:50,price:45,desc:'宝马产的乳，性温滋补（恢复50内力）。'};
+ITEMS['鹿茸']={type:'material',price:180,quality:'珍品',desc:'灵鹿脱落的嫩茸，炼丹上品辅料。'};
+ITEMS['妖禽羽']={type:'material',price:120,quality:'良品',desc:'妖禽换羽时落下的翎羽，可制箭羽或编羽扇。'};
+// —— 新菜谱（用养殖+垂钓+种植产出做原料）——
+Object.assign(COOK_RECIPES,{
+  '清蒸鲈鱼':{in:{小鱼虾:2}, days:1, heal:0.35, lv:0, mods:{}, desc:'鲜嫩清甜，家常好味。'},
+  '酱爆河虾':{in:{河虾:2}, days:1, heal:0.3, lv:0, mods:{atkPct:0.02}, desc:'爆炒河虾，微辣鲜香（攻伐 +2%，一日）。'},
+  '莲藕排骨汤':{in:{莲藕:1,猪肉:1}, days:2, heal:0.45, lv:1, mods:{hp:20}, desc:'藕香四溢，滋补强身（气血上限 +20，两日）。'},
+  '白灼带鱼':{in:{带鱼:1}, days:1, heal:0.25, lv:0, mods:{}, desc:'白灼带鱼，原汁原味。'},
+  '金枪刺身':{in:{金枪鱼:1}, days:1, heal:0.4, lv:1, mods:{crit:0.03}, desc:'刀工刺身，会心 +3%（一日）。'},
+  '灵菌炖鸡':{in:{灵木:1,鸡蛋:2}, days:2, heal:0.5, lv:2, mods:{defPct:0.03}, desc:'灵木香菇炖土鸡，守御 +3%（两日）。'},
+  '鹿茸酒':{in:{鹿茸:1,陈年女儿红:1}, days:3, mods:{atkPct:0.06,defPct:0.04}, desc:'灵鹿嫩茸泡酒，大补气血（攻伐 +6%、减伤 +4%，三日）。'},
+  '龙涎鱼生':{in:{龙涎鱼:1}, days:3, mods:{atkPct:0.05,crit:0.04}, desc:'深海灵鱼刺身——食之念力涌动（攻伐 +5%、会心 +4%，三日）。'}
+});
+// —— 垂钓扩充：新增鱼种 + 分水域补全 ——
+ITEMS['银龙鱼']={type:'consumable',effect:'heal',value:80,price:120,quality:'珍品',desc:'珍品·银龙鱼。银鳞如甲，跃出水面的瞬间龙影隐现（恢复80生命）。'};
+ITEMS['碧眼灵鱼']={type:'consumable',effect:'mana',value:100,price:150,quality:'绝品',desc:'绝品·碧眼灵鱼。双目碧翠，食之神清气爽（内力 +100）。'};
+ITEMS['金鳞鲤']={type:'consumable',effect:'heal',value:120,price:180,quality:'绝品',desc:'绝品·金鳞鲤。通体金鳞，鲤跃龙门之兆（恢复120生命）。'};
+// —— 锻造扩充：新配方（用新材料/养殖产出做辅材）——
+Object.assign(SMITH_RECIPES,{
+  '精钢长剑':{in:{精铁料:2,金精铜:1}, fee:80, lv:2},
+  '碎星刀':{in:{玄铁:1,星纹砂:1,地心火铜:1}, fee:380, lv:6},
+  '寒月枪':{in:{玄铁:1,寒玉髓:1}, fee:300, lv:5},
+  '碎岳锤':{in:{玄铁:2,陨铁:1}, fee:450, lv:7},
+  '龙纹弓':{in:{蛟筋:1,剑胚矿石:2}, fee:400, lv:6},
+  '无影匕':{in:{寒玉髓:1,精铁料:1}, fee:280, lv:5}
+});
+// —— 炼丹扩充：新配方（用药圃/养殖/垂钓产出做原料）——
+Object.assign(ALCHEMY_RECIPES,{
+  '壮血丹':{in:{草药:2,猪肉:1}, fee:30, lv:1},
+  '凝神散':{in:{朱砂:1,小鱼虾:1}, fee:25, lv:1},
+  '碧血丹':{in:{莲藕:2,妖血:1}, fee:120, lv:4},
+  '龙骨散':{in:{龙骨:1,寒玉髓:1}, fee:280, lv:6}
+});
+ITEMS['壮血丹']={type:'consumable',effect:'heal',value:60,price:28,quality:'良品',desc:'壮血强身之丹，气血 +60。'};
+ITEMS['凝神散']={type:'consumable',effect:'mana',value:40,price:24,quality:'良品',desc:'凝神聚气之散，内力 +40。'};
+ITEMS['碧血丹']={type:'consumable',effect:'exp',value:100,price:110,quality:'珍品',desc:'碧血凝成的灵丹，修为 +100。'};
+ITEMS['龙骨散']={type:'consumable',effect:'heal',value:180,price:160,quality:'绝品',desc:'龙骨研粉入药，大补气血（恢复180生命）。'};
+// —— 新材料 ——
+ITEMS['龙骨']={type:'material',price:250,quality:'绝品',desc:'巨龙的遗骨碎片，坚逾精钢，炼器入药皆可。'};
+ITEMS['妖血']={type:'material',price:180,quality:'绝品',desc:'妖兽精血，腥气刺鼻，炼丹炼器的关键辅料。'};
+ITEMS['灵木']={type:'material',price:60,quality:'良品',desc:'灵木削片，烧火时有淡淡清香，炼丹佳引。'};
+// ============ 经营扩充六：养殖扩充/新菜谱/新材料/两系同修 ============
+Object.assign(LIVESTOCK_DEFS,{
+  '火鸦':{cost:1500, feed:35, out:'火鸦羽', every:8, outN:1, sell:3000},
+  '灵狐':{cost:1000, feed:18, out:'狐火珠', every:6, outN:1, sell:2000}
+});
+ITEMS['火鸦羽']={type:'material',price:280,quality:'绝品',desc:'火鸦换羽时落的翎羽，隐有热浪——炼器引火的上品辅材。'};
+ITEMS['狐火珠']={type:'material',price:200,quality:'绝品',desc:'灵狐凝出的狐火珠，夜明珠般温润，暗藏灵机。'};
+Object.assign(COOK_RECIPES,{
+  '火鸦蛋炒饭':{in:{火鸦羽:1,米粮:1}, days:2, heal:0.4, lv:3, mods:{atkPct:0.03,crit:0.02}, desc:'火鸦蛋炒出来的饭，微辣鲜香（攻伐 +3%、会心 +2%，两日）。'},
+  '狐火暖锅':{in:{狐火珠:1,猪肉:2}, days:3, heal:0.7, lv:4, mods:{dr:0.05,atkPct:0.04}, desc:'灵狐之火温着锅底，暖入骨髓（减伤 +5%、攻伐 +4%，三日）。'},
+  '马奶酒':{in:{马奶:1}, days:2, mods:{atkPct:0.03}, desc:'草原马奶酒，豪迈（攻伐 +3%，两日）。'},
+  '鹿茸煲':{in:{鹿茸:1,牛乳:1}, days:2, mods:{defPct:0.05}, desc:'鹿茸煲牛乳，大补根基（减伤 +5%，两日）。'}
+});
+Object.assign(SMITH_RECIPES,{
+  '碧水剑':{in:{寒玉髓:2,龙骨:1}, fee:380, lv:6},
+  '碎玉匕':{in:{寒玉髓:1,金精铜:2}, fee:300, lv:5},
+  '碎星锤':{in:{星纹砂:2,玄铁:2}, fee:520, lv:7},
+  '穿云弩':{in:{蛟筋:1,雷击木:2}, fee:450, lv:6}
+});
+Object.assign(ALCHEMY_RECIPES,{
+  '归元丹':{in:{莲藕:2,牛乳:1,草药:2}, fee:120, lv:4},
+  '金疮药':{in:{草药:3,兽皮:1}, fee:45, lv:2},
+  '活血丹':{in:{龙骨:1,鹿茸:1}, fee:320, lv:7}
+});
+ITEMS['归元丹']={type:'consumable',effect:'mana',value:80,price:70,quality:'良品',desc:'归元固本之丹，内力 +80。'};
+ITEMS['金疮药']={type:'consumable',effect:'heal',value:80,price:40,quality:'良品',desc:'金疮即愈的好药（恢复80生命）。'};
+ITEMS['活血丹']={type:'consumable',effect:'heal',value:220,price:280,quality:'绝品',desc:'活血化瘀，通经活络——大补之丹（恢复220生命）。'};
+// —— 两系同修联动（贴参考.txt 乘区联动表） ——
+const DUAL_BONUS={
+  '剑|武':{crit:0.05}, '武|儒':{atkPct:0.02,defPct:0.02}, '剑|符':{atkPct:0.03},
+  '法|道':{mpPct:0.03}, '魔|冥':{crit:0.03}, '阵|儒':{defPct:0.03}
+};
+function dualPathBonus(){
+  const schools=new Set();
+  (player.skills||[]).forEach(function(sk){
+    const sd=SKILLS[sk]; if(sd&&sd.wpn) schools.add(sd.wpn);
+    if(sd&&sd.cls) schools.add(sd.cls);
+  });
+  if(schools.size<2) return {crit:0,atkPct:0};
+  const arr=[...schools].sort().join('|');
+  for(const dk in DUAL_BONUS){
+    const [a,b]=dk.split('|');
+    if(schools.has(a)&&schools.has(b)) return DUAL_BONUS[dk];
+  }
+  return {crit:0.01,atkPct:0.01};
+}
 // —— 家园门户 ——
 function openHome(){
   const h=document.createElement('div');
@@ -15113,6 +15227,7 @@ function openHome(){
   };
   if(m.tier) mk('回宅邸 · 正堂','走回家里去——安睡、做饭、派遣家仆都在堂上','green',function(){ walkPath(homeAnchor()+'·正堂'); });
   if(m.tier<3) mk('置办新宅','（'+(MANOR_TIERS[m.tier+1].cost)+'两）','primary',function(){ buyManorStep(); ensureHomeRooms(); openHome(); });
+  if(player.sect && canUpgradeRank()) mk('晋升身份','凭贡奉'+SECT_RANKS[player.sectRank+1].favor+'与修为晋升至【'+SECT_RANKS[player.sectRank+1].name+'】','gold',function(){ upgradeSectRank(); });
   if(m.tier>=3 && !game.villa) mk('置山中别院（3000两）','落魄山脚再置一处别业——城里山里，来去皆家','primary',function(){
     if(player.gold<3000){ log('（置山中别院需三千两——家底还差些）','sys'); return; }
     player.gold-=3000; game.villa=true; ensureVillaRooms();
@@ -18328,6 +18443,32 @@ function joinSect(sect){
   if(player.quests.indexOf('拜师学艺')===-1){ player.quests.push('拜师学艺'); }
   logQuest('—— 支线：拜师学艺 完成 ——');
   renderMap(); look();
+}
+// —— 宗门身份五级：外门→内门→真传→核心→长老候选（凭贡奉+等级晋升）——
+const SECT_RANKS=[
+  {name:'外门弟子', favor:0,  lv:0},
+  {name:'内门弟子', favor:50, lv:5},
+  {name:'真传弟子', favor:150, lv:10},
+  {name:'核心弟子', favor:300, lv:15},
+  {name:'长老候选', favor:500, lv:20}
+];
+function sectRankName(){ const r=player.sectRank||0; return SECT_RANKS[r]?SECT_RANKS[r].name:'外门弟子'; }
+function canUpgradeRank(){
+  const r=player.sectRank||0;
+  if(r>=SECT_RANKS.length-1) return false;
+  const next=SECT_RANKS[r+1];
+  return sectFavorNow()>=next.favor && player.level>=next.lv;
+}
+function upgradeSectRank(){
+  const r=player.sectRank||0;
+  if(r>=SECT_RANKS.length-1){ log('（你已是门中顶梁——身份无可再升）','sys'); return; }
+  const next=SECT_RANKS[r+1];
+  if(sectFavorNow()<next.favor){ log('（贡奉不足 '+next.favor+'——多为宗门效力）','sys'); return; }
+  if(player.level<next.lv){ log('（修为至少第 '+next.lv+' 层才够格）','sys'); return; }
+  player.sectRank=r+1;
+  logTitle('—— 身份晋升：'+sectRankName()+' ——');
+  logSuccess('（你在门中的地位提升了！往后门中资源、功法传授，都会更倾斜于你。）');
+  updateSidebar(); openSectHall();
 }
 function openSectSkills(sect){
   const s=SECTS[sect]; if(!s) return;
