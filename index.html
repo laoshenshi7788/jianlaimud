@@ -4357,6 +4357,7 @@ let game = {
   roomCleared:{},     // 已清剿房间守敌 {roomName:true}
   flags: {},
   info: {},
+  tutFlags: {},       // 新手引导进度（look/talk/cult/fight/travel）——须在 PRISTINE_GAME 快照内，否则新开局丢失
   fame: 0,            // 侠义声望
   infamy: 0,          // 恶名（通缉度）
   boardWanted: [],    // 玩家被通缉的条数（由恶名触发）
@@ -5518,7 +5519,7 @@ function walkPath(to){
       game._walking=false;
       resetMapTip();
       const tb0=document.getElementById('travel-bar'); if(tb0) tb0.innerHTML='';
-      game.tutFlags&&(game.tutFlags.travel=1);
+      tutSet('travel');
       logSuccess('（你已踏上「'+dest+'」。）');
       randomEncounter(); tradeCargoRisk();
       // 目的地有守卫则触发战斗
@@ -5611,7 +5612,7 @@ function askMove(rn){
 }
 // —— 通用打量：不动身，先看看那边光景 ——
 function sizeUpRoom(rn){
-  if(game.tutFlags) game.tutFlags.look=1;
+  tutSet('look');
   const r=ROOMS[rn];
   if(!r){ logInfo('（'+rn+'——你还没去过，看不清楚。）'); return; }
   logInfo('（你朝「'+(r.label||rn)+'」望去——'+(r.desc||'看不真切。')+'）');
@@ -5634,7 +5635,7 @@ function showMoveConfirm(rn, steps, fp){
     +'<button class="btn danger small" data-a="go">确认赶路</button>'
     +'<button class="btn small" data-a="no">✕</button>';
   bar.querySelector('[data-a="go"]').addEventListener('click',function(){ bar.innerHTML=''; walkPath(rn); });
-  bar.querySelector('[data-a="no"]').addEventListener('click',function(){ bar.innerHTML=''; });
+  bar.querySelector('[data-a="no"]').addEventListener('click',function(){ bar.innerHTML=''; try{ tutHint(); }catch(e){} }); // 取消赶路后还原引导提示
 }
 // —— 图论：房间间最短路（BFS 步数，限当前层级地图） ——
 function roomDist(start){
@@ -6611,6 +6612,7 @@ initBarFold();
 function hasInterior(rn){ for(const k in ROOMS){ if(ROOMS[k].bld===rn) return true; } return false; }
 // —— 就地行事 · 总选项（点开是详细选项） ——
 function openPlaceActions(){
+  tutSet('look'); // 新手引导：主动了解所在之处也算「打量四周」
   const r=getRoom(player.room);
   const label=r?(r.label||player.room):player.room;
   const h=document.createElement('div');
@@ -6805,7 +6807,7 @@ function runEvent(ev){
    ================================================================ */
 let talkingNpc=null;
 function talkTo(npcName){
-  if(game.tutFlags) game.tutFlags.talk=1;
+  tutSet('talk');
   const npc=getNpc(npcName); if(!npc) return;
   hookCodexNpc(npcName); // 图鉴：人物谱
   talkingNpc=npcName;
@@ -7501,6 +7503,7 @@ function attackNpc(npcName){
   logDiv();
   logCombat('你骤然出手，袭向'+npcName+'！');
   logInfo('（'+npcName+'：'+npc.greet+'）');
+  tutSet('fight'); // 出手即算打过一仗（引导步进）
   // 简易回合：玩家可连击，对方反击
   let turn=0;
   const step=()=>{
@@ -9235,7 +9238,7 @@ function battleLog(text, cls){
 }
 
 function startFight(name){
-  if(game.tutFlags) game.tutFlags.fight=1;
+  tutSet('fight');
   const ed=getEnemy(name); if(!ed) return;
   hookCodexEnemy(name); // 图鉴：敌人
   const env=battleEnv();
@@ -10866,7 +10869,7 @@ function meditate(){
 }
 // —— 吐纳调息：贫寒人的自愈法——理气顺气、回复气血内力；修为所得微薄且不随境界水涨船高 ——
 function breathe(){
-  if(game.tutFlags) game.tutFlags.cult=1;
+  tutSet('cult');
   if(player.hp<3){ log('（你伤重气短，连吐纳都难以为继）','sys'); return; }
   if(game.medCd && game.medCd>game.turns){ log('（气机尚浮——再等 '+(game.medCd-game.turns)+' 回合再吐纳）','sys'); return; }
   game.medCd=game.turns+4;
@@ -14832,6 +14835,13 @@ function tutMentor(){
   return null;
 }
 function tutMentorName(){ return tutMentor()||'师长'; }
+// 统一置位 + 立即刷新提示条（玩家做完一步，下一条提示马上跟上）
+function tutSet(k){
+  if(!game.tutFlags) game.tutFlags={};
+  if(game.tutFlags[k]) return;
+  game.tutFlags[k]=1;
+  try{ tutHint(); }catch(e){}
+}
 const TUT_STEPS=[
   {hint:function(){ return '（'+tutMentorName()+'远远看着你：初来乍到——先点开「✦ 就地行事」，把四周打量一番。）'; }, done:function(){ return game.tutFlags.look; }, rw:function(){ return '（眼观六路，是江湖第一步。）'; }},
   {hint:function(){ return '（'+homeRoom()+'虽好，总要走出去——点舆图上的地名，或直接点相邻的格子，出去走走。）'; }, done:function(){ return player.visited.length>2; }, rw:function(){ return '（路是走出来的，不是想出来的。）'; }},
@@ -14843,6 +14853,7 @@ const TUT_STEPS=[
 ];
 function tutHintText(s){ return typeof s.hint==='function'?s.hint():s.hint; }
 function tutHint(){
+  if(!game.tutFlags) game.tutFlags={}; // 自愈：旧档/开局重置后缺失也不至于抛错
   if(game.tutDone||game.tutSkip) return;
   if(player.level>6){ game.tutDone=1; return; }
   const tb=document.getElementById('travel-bar'); if(!tb) return;
@@ -14852,6 +14863,7 @@ function tutHint(){
   TUT_STEPS.forEach(function(s){ if(!s._done && s.done()){ s._done=true; s.rw(); } });
   if(TUT_STEPS.every(function(s){ return s._done; })){
     game.tutDone=1;
+    tb.innerHTML=''; // 毕业：提示条功成身退
     // 毕业奖励：按出身给信物
     const born=homeRoom();
     const gifts={'泥瓶巷':'槐木剑','大骊京城':'开山拳','龙虎山':'黄符纸','青莲洞天':'洞天玉简','北俱雪山':'仙家雪莲','蛮荒沙海':'干粮','藕花福地':'莲藕','云来客栈':'干粮'};
@@ -19729,7 +19741,7 @@ registerCmd('rest', { label:'调养', desc:'歇息调养，恢复气血', fn:fun
 registerCmd('pack', { label:'行囊', desc:'使用物品 / 穿戴装备', fn:function(){ openBackpack(); } });
 registerCmd('cultivate', { label:'修炼', desc:'修炼 · 破境', fn:function(){ openCultPanel(); } });
 registerCmd('save', { label:'存档', desc:'保存游戏进度', fn:function(){ saveGame(); } });
-registerCmd('look', { label:'环顾', desc:'环顾四周', fn:function(){ look(); } });
+registerCmd('look', { label:'环顾', desc:'环顾四周', fn:function(){ tutSet('look'); look(); } });
 registerCmd('move_n', { label:'向北', fn:function(){ moveDir('n'); } });
 registerCmd('move_s', { label:'向南', fn:function(){ moveDir('s'); } });
 registerCmd('move_e', { label:'向东', fn:function(){ moveDir('e'); } });
