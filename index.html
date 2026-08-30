@@ -4322,6 +4322,7 @@ function discoverQuests(){
   if(!game.questOpen) game.questOpen={};
   if(!game.dailyDone) game.dailyDone={};
   const dk=dayKey();
+  const opened=[];
   for(const id in QUESTS){
     const q=QUESTS[id];
     if(!q || !q.auto || !q.unlock) continue;
@@ -4332,8 +4333,11 @@ function discoverQuests(){
     try{ ok=!!q.unlock(); }catch(e){ ok=false; }
     if(!ok) continue;
     game.questOpen[id]=true;
-    if(!q.daily) logQuest('—— 新的线索：「'+q.title+'」已记入任务栏——打开「任务剧情」即可接取。'+q.desc+' ——');
+    if(!q.daily) opened.push(q.title);
   }
+  // 批量上架提示：一次开太多就只报总数（高境入世/破境后防刷屏）
+  if(opened.length>4) logQuest('—— 新的线索 ×'+opened.length+'：一批委托已解锁上架，详见「任务剧情」。 ——');
+  else if(opened.length) opened.forEach(function(t){ logQuest('—— 新的线索：「'+t+'」已记入任务栏——打开「任务剧情」即可接取。 ——'); });
 }
 // 跨日清点：昨天的日常委托从任务栏退场（明日再来）
 function rotateDailies(){
@@ -5006,12 +5010,13 @@ jinjing:0,        // 金精铜钱（神道顶流硬通货：压胜/迎春/供养
 };
 const SAVE_VER=3;               // 存档版本（框架级：升级结构时递增并做迁移）
 const SAVE_KEY='mud_jianghu_v2'; // 兼容旧档键名（单槽）；新档写多槽位
-const SAVE_SLOTS=['mud_jianghu_s1','mud_jianghu_s2','mud_jianghu_s3']; // 3 个存档槽
+const SAVE_SLOTS=['mud_jianghu_s1','mud_jianghu_s2','mud_jianghu_s3','mud_jianghu_s4','mud_jianghu_s5','mud_jianghu_s6','mud_jianghu_s7','mud_jianghu_s8','mud_jianghu_s9','mud_jianghu_s10']; // 10 个存档槽
 let _curSlot=0;                  // 当前槽位
 function slotKey(i){ return SAVE_SLOTS[i]||SAVE_SLOTS[0]; }
+function firstEmptySlot(){ for(let i=0;i<SAVE_SLOTS.length;i++){ if(!hasSaveInSlot(i)) return i; } return 0; } // 全满则回 0 号槽（覆盖最旧）
 function hasSaveInSlot(i){ try{ return !!localStorage.getItem(slotKey(i)); }catch(e){ return false; } }
 function hasAnySave(){
-  try{ return hasSaveInSlot(0)||hasSaveInSlot(1)||hasSaveInSlot(2)||!!localStorage.getItem(SAVE_KEY); }catch(e){ return false; }
+  try{ for(let i=0;i<SAVE_SLOTS.length;i++){ if(hasSaveInSlot(i)) return true; } return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; }
 }
 // 读某个槽的存档数据（旧档键名作为第 0 槽的迁移来源）
 function readSlot(i){
@@ -11214,9 +11219,9 @@ const DAO_NAMES=['练气士','剑修','体修'];
 const PATHS={
   '练气士':{tag:'御法通神、问道长生', realms:['铜皮境','草根境','柳筋境','骨气境','筑庐境','洞府境','观海境','龙门境','金丹境','元婴境','玉璞境','仙人境','飞升境','失传十四境'],
     bonus:{hp:0, mp:2, atk:0, def:0, skill:0.008}},
-  '剑修':{tag:'以心御剑、一剑破万法', realms:['市井凡人','铸剑意','凝剑胚','生剑心','筑剑域','融剑魂','剑域天成','问剑千里','剑仙','十三境','十四境','十五境剑主','剑道之上','万剑之巅'],
+  '剑修':{tag:'以心御剑、一剑破万法', realms:['铜皮境','草根境','柳筋境','骨气境','筑庐境','洞府境','观海境','龙门境','金丹境','元婴境','玉璞境','仙人境','飞升境','合道境·十四境'],
     bonus:{hp:0, mp:0, atk:0.012, def:0, skill:0}},
-  '体修':{tag:'熬打筋骨、武夫之极', realms:['泥胚境','木胎境','水银境','英魂境','雄魄境','武胆境','金身境','羽化境·远游','山巅境','止境·气盛','止境·归真','止境·神到','武神境','武夫之极'],
+  '体修':{tag:'熬打筋骨、武夫之极', realms:['泥胚境','木胎境','水银镜','英魂境','雄魄境','武胆境','金身境','羽化境·远游','山巅境','止境·气盛','止境·归真','止境·神到','武神境','武夫之极'],
     bonus:{hp:4, mp:0, atk:0, def:0.8, skill:0}}
 };
 function daoExpOf(p){ if(!game.daoExp) game.daoExp={练气士:0,剑修:0,体修:0}; return game.daoExp[p]||0; }
@@ -20211,7 +20216,7 @@ const STARTUP_CLASSES=[
  {id:'wufu', name:'纯粹武夫', path:'体修', tag:PATHS['体修'].tag,
   desc:'不假外物，熬打筋骨——炼体三境、炼气三境、炼神三境，一步一步走上武道山巅。'},
  {id:'jianxiu', name:'剑修', path:'剑修', tag:PATHS['剑修'].tag,
-  desc:'以心御剑，一剑破万法——养剑意、凝剑胚、生剑心，剑道一途，唯有一剑。'}
+  desc:'练气士的极致分支——境界与练气士同梯（铜皮筑基、结丹元婴、玉璞飞升），胜处有三：同等境界杀力最高、一柄本命飞剑随境界共生、剑意越阶可欺敌。'}
 ];
 // —— 初始境界：随职业门控（无代价：不折银两、不损名望，境界名皆出剑来原著）——
 //    每道取前六重楼；rung.i 对应 REALMS 下标，入世后显示名与 PATHS[职业].realms 一致
@@ -20572,6 +20577,16 @@ function applyStartup(bgId){
   player.level=rung.lv;
   player.realm=rung.i; // 入世即该境——层数随修为涨，破境另有五途
   for(let r=0;r<=rung.i;r++){ const b=REALMS[r].b; player.maxHp+=b.hp; player.maxMp+=b.mp; player.atk+=b.atk; player.def+=b.def; }
+  // 高境界入世：直接落在应处的章节，并把已越过章节的演出标记为已看——
+  // 否则首次升级会连环弹出第二/三章的旧章弹窗（开新档却被旧剧情"欢迎回来"）
+  try{
+    const tCh=targetChapter();
+    if(tCh>0){
+      if(!game.beats) game.beats={};
+      CHAPTER_BEATS.forEach(function(b){ if(b.chapter<=tCh) game.beats[b.key]=true; });
+      game.chapter=tCh;
+    }
+  }catch(e){}
   // 天命特质：开局可先定一条（另一条入世后于「道痕」面板再定）
   player.traits= _startup.trait? [ _startup.trait ] : [];
   // 开局人际网：无论出身贵贱、境界高低，都该有街坊故旧——
@@ -20619,6 +20634,15 @@ function applyStartup(bgId){
   if(cls.path && player.level>=4){
     try{ ensureOrigin(); }catch(e){}
   }
+  // 高境入世：章节静默补齐（不弹演出、不刷任务解锁日志——那些旧事，高境者早已历过）
+  try{
+    game.beats=game.beats||{};
+    const _tc=targetChapter();
+    if(_tc>(game.chapter||0)){
+      game.chapter=_tc;
+      CHAPTER_BEATS.forEach(function(b){ if(b.chapter<=game.chapter) game.beats[b.key]=true; });
+    }
+  }catch(e){}
   try{ saveGame(); }catch(e){}
   updateSidebar();
   enterWorld(true); // 新档：进入江湖（含 look/renderMap/时钟/自动存档；抑制"已读取存档"提示）
@@ -22215,9 +22239,9 @@ function openSettings(){
   volRange.addEventListener('input',function(){ volLabel.textContent=Math.round(volRange.value*100)+'%'; setMusicVolume(parseFloat(volRange.value)); });
   volCtl.appendChild(volRange); volCtl.appendChild(volLabel);
   mkRow('音乐音量','调节背景音乐大小', volCtl);
-  // —— 存档槽位（框架：3 槽位 + 旧档迁移） ——
+  // —— 存档槽位（框架：10 槽位 + 旧档迁移） ——
   const slotCtl=document.createElement('div'); slotCtl.style.cssText='display:flex;gap:6px;align-items:center;flex-wrap:wrap;';
-  for(let i=0;i<3;i++){
+  for(let i=0;i<SAVE_SLOTS.length;i++){
     const b=document.createElement('button'); b.className='btn small '+(i===_curSlot?'green':''); b.textContent='存档'+(i+1)+(hasSaveInSlot(i)?'●':'○');
     b.addEventListener('click',function(){
       _curSlot=i;
@@ -22235,7 +22259,7 @@ function openSettings(){
     enterWorld(false);
   });
   slotCtl.appendChild(loadB);
-  mkRow('存档槽位','三个存档位，可分别保存不同江湖（自动存档写入当前槽）', slotCtl);
+  mkRow('存档槽位','十个存档位，可分别保存不同江湖（自动存档写入当前槽；「开始游戏」自动写第一个空槽）', slotCtl);
   // 存档导出 / 导入（换设备、重装皆可续缘）
   const saveIO=document.createElement('div'); saveIO.style.cssText='margin-top:12px;border-top:1px dashed rgba(255,255,255,.25);padding-top:10px;';
   const bE=document.createElement('button'); bE.className='btn small blue'; bE.textContent='导出存档（复制代码）';
@@ -22417,8 +22441,9 @@ function showTitleScreen(){
   contBtn.disabled=!hasSave;
   if(hasSave){
     try{
-      // 优先展示当前槽位，否则找第一个有档的槽位
-      let d=readSlot(_curSlot)||readSlot(0)||readSlot(1)||readSlot(2);
+      // 优先展示当前槽位，否则扫十个槽找第一个有档的
+      let d=readSlot(_curSlot);
+      if(!d){ for(let i=0;i<SAVE_SLOTS.length;i++){ d=readSlot(i); if(d) break; } }
       const p=d.player||{}, g=d.game||{};
       saveEl.textContent='（旧档：'+(p.name||'无名侠客')+' · '+(p.level||1)+'级 · '+(p.room||'泥瓶巷')+' · 大骊'+(8+(g.year||0))+'年）';
     }catch(e){ saveEl.textContent='（检测到旧档，可续前缘。）'; }
@@ -22432,6 +22457,8 @@ function hideTitleScreen(){
 }
 function startNewGame(){
   hideTitleScreen();
+  // 开新局 = 新存档：自动跳到第一个空槽（旧档一个不动）；十槽全满才回 0 号槽
+  _curSlot=firstEmptySlot();
   freshGame();                       // 开天辟地：恢复初始底稿
   resetRng(Math.floor(Math.random()*0x7fffffff)); // 新档新天地（不沿用旧档种子）
   game.worldSeed=_seed;
@@ -22446,8 +22473,46 @@ function startNewGame(){
 }
 function continueGame(){
   try{ if(!hasAnySave()){ log('（没有可续的旧档——先开一局新的吧）','sys'); return; } }catch(e){}
+  openSlotPicker();
+}
+// —— 十槽存档选择器：读哪个档，一目了然 ——
+function slotMeta(i){
+  try{
+    const d=readSlot(i); if(!d) return null;
+    const p=d.player||{}, g=d.game||{};
+    const realms=(PATHS[p.path]&&PATHS[p.path].realms)||REALMS.map(function(r){return r.name;});
+    const rn=realms[Math.min(p.realm||0, realms.length-1)]||'';
+    return { name:p.name||'无名侠客', lv:p.level||1, realm:rn, ch:chapterNameOf(g.chapter||0), room:p.room||'泥瓶江湖', year:8+(g.year||0) };
+  }catch(e){ return null; }
+}
+function chapterNameOf(c){ return ['序章','第一章','第二章','第三章','第四章','第五章','终章','大结局'][Math.min(c,7)]||'序章'; }
+function openSlotPicker(){
+  const h=document.createElement('div');
+  h.style.cssText='font-size:.8em;color:#ffffff;';
+  const tip=document.createElement('div'); tip.style.cssText='color:#c9c9cf;font-size:.72em;line-height:1.7;margin-bottom:8px;';
+  tip.textContent='（十个存档槽，各自是一段独立的江湖。「开始游戏」永远写入第一个空槽——旧档不会被新档覆盖。）';
+  h.appendChild(tip);
+  for(let i=0;i<SAVE_SLOTS.length;i++){
+    const meta=slotMeta(i);
+    const row=document.createElement('div'); row.className='list-row';
+    if(meta){
+      row.innerHTML='<span class="lname">存档'+(i+1)+'　「'+meta.name+'」</span><span class="lmeta">'+meta.realm+' · '+meta.lv+'级 · '+meta.ch+' · '+meta.room+' · 大骊'+meta.year+'年</span>';
+      const b=document.createElement('button'); b.className='btn small primary'; b.textContent='续写';
+      b.addEventListener('click',function(){ document.getElementById('overlay').classList.remove('show'); loadSlotAndEnter(i); });
+      row.appendChild(b);
+    } else {
+      row.innerHTML='<span class="lname">存档'+(i+1)+'</span><span class="lmeta">（空——「开始游戏」会优先写到这里）</span>';
+      const b=document.createElement('button'); b.className='btn small'; b.disabled=true; b.textContent='空';
+      row.appendChild(b);
+    }
+    h.appendChild(row);
+  }
+  openModal('续写前缘 · 选择存档', ()=>h);
+}
+function loadSlotAndEnter(i){
   hideTitleScreen();
-  try{ loadGame(); }catch(e){ log('（旧档读取失败——可能已损坏，试着重开一局）','sys'); showTitleScreen(); return; }
+  _curSlot=i;
+  try{ loadGame(i); }catch(e){ log('（旧档读取失败——可能已损坏，试着重开一局）','sys'); showTitleScreen(); return; }
   // loadGame 已恢复 player/game 与 NPC 快照；补公共初始化
   wireRepute();
   generateZoneNpcs();                // 快照已有 → 不再生成
