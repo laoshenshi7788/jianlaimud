@@ -4721,13 +4721,31 @@ function checkRoomEvents(){
 /* ================================================================
    文本输出
    ================================================================ */
+// —— NPC 头像：按名字哈希+性别分配确定性头像 ——
+const AVATAR_COUNTS={male:28,female:34};
+function npcAvatar(name){
+  const npc=getNpc(name);
+  const gender=(npc&&npc.gender==='女')?'female':'male';
+  const count=AVATAR_COUNTS[gender];
+  let h=0;
+  for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))>>>0;
+  const idx=(h%count)+1;
+  return 'assets/avatars/'+gender+'/'+gender+'_'+String(idx).padStart(2,'0')+'.png';
+}
 function logLine(text, cls, who){
   const box=document.getElementById('log');
 
   const d=document.createElement('div');
   d.className='msg';
   let html='';
-  if(who) html='<b class="pn">'+who+'：</b>';
+  if(who){
+    // NPC 对话行——插入小头像
+    try{
+      const av=npcAvatar(who);
+      html+='<img src="'+av+'" style="width:32px;height:32px;border-radius:50%;border:1.5px solid #8a7448;margin-right:5px;vertical-align:middle;object-fit:cover;" onerror="this.style.display=\'none\'">';
+    }catch(e){}
+    html+='<b class="pn">'+who+'：</b>';
+  }
   html+='<span class="line '+cls+'">'+text+'</span>';
   d.innerHTML=html;
   box.appendChild(d);
