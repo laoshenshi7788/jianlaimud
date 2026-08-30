@@ -7711,6 +7711,55 @@ const CHAT_POOL={
    fengwu:['山水如旧，人却换了一茬又一茬。',{m:'老夫在此地住了四十年，看惯了云卷云舒。',f:'老身在此地住了四十年，看惯了云卷云舒。'}]
  }
 };
+// —— 低好感提防话：初识之人话不到深处，但句句贴题、各有性情（好感 <15 时五五开混入） ——
+const CHAT_WARY={
+ '豪迈':{
+   jianghu:['江湖事江湖了——你我还不熟，这话我只能说到这儿。','外乡人，多喝酒少打听，保你平安。'],
+   jian:['我的剑法是拿命换的，还不熟就传人？笑话。','想学剑？先陪我喝三碗，再看看你骨头硬不硬。'],
+   xinshi:['心事？头一回见面就掏心窝子，那我这辈子活得也太便宜了。','有些事烂在肚子里才踏实——你也一样。'],
+   fengwu:['这地方好不好，你自己长眼睛看。','风物尚可，人情冷暖——你自己品。']
+ },
+ '温婉':{
+   jianghu:['客官说笑，我一个开茶馆的，哪里知道什么江湖大事。','江湖远着呢——茶要凉了，您慢用。'],
+   jian:['剑道我不懂……客官还是去问佩剑的人吧。','这话题太重了，我倒些茶，说点轻省的。'],
+   xinshi:['（她垂下眼）与客官初见，这些话不便多说。','心事人人有——说出来就轻了？我倒不信。'],
+   fengwu:['此间风物尚可，就是近来外乡人多了些。','景致还是那些景致，看的人心境不同罢了。']
+ },
+ '冷峻':{
+   jianghu:['与你无关。','知道太多，死得快。'],
+   jian:['剑不问来路。你还没资格问我。','哼。'],
+   xinshi:['……','我没有心事。'],
+   fengwu:['寻常。','风要起了，散了吧。']
+ },
+ '诙谐':{
+   jianghu:['江湖大事？我最大的事是今天没开张！','嘿，你这人，头一回见面就查户口。'],
+   jian:['剑法？我唯一精通的是"跑得快"，学不学？','论剑可以，论完你请客。'],
+   xinshi:['我的心事就是缺钱——你要是肯给，我就有故事。','心事不能白听，得拿酒换！'],
+   fengwu:['风景美不美，全看兜里有没有。','这地方好啊——好就好在没人管我。']
+ },
+ '沧桑':{
+   jianghu:['江湖的事，老朽看了几十年——看得越久，越不想说。','年轻人，有些事知道了没好处。'],
+   jian:['剑道？我这双手早就握不住剑了——你问旁人吧。','剑是年轻人的东西，老朽只有故事。'],
+   xinshi:['心事都埋进土里了，与枯骨做伴——莫问。','……（他沉默了很久）改日吧。'],
+   fengwu:['山水还是那山水，人换了一茬又一茬。','风物无恙——人心难说。']
+ }
+};
+// —— 高好感暖场（好感 ≥60 时五五开缀在答话之后） ——
+const CHAT_WARM={
+ '豪迈':'（说到兴头上，他重重拍了拍你的肩）跟你说话，痛快！',
+ '温婉':'（她抿嘴一笑）与你说话，时辰总是过得快。',
+ '冷峻':'（他语气依旧平淡，却没有下逐客令）……今日，说得不坏。',
+ '诙谐':'（他挤挤眼）瞧见没，跟你聊天，我连酒钱都忘挣了。',
+ '沧桑':'（他捋须长叹）这许多年，能听老朽把话说完的人，不多了。'
+};
+// —— 「闲聊」开场白按人设轮换（不再千人一句） ——
+const CHAT_SMALL_OPEN={
+ '豪迈':['来来来，站着说什么话——喝一口再说！','有事说事，没事唠唠，我这人闲不住。','你来得正好，我这儿刚煮了酒。'],
+ '温婉':['客官请坐，我给你续了茶——慢慢说。','今日风软，正好说说话。','看你的样子，是走了远路吧？'],
+ '冷峻':['……说吧，我在听。','闲聊？也行。你说。','（他没抬头，但也没赶你走。）'],
+ '诙谐':['哟，稀客！今天聊什么，酒钱记谁账上？','来来来，我这张嘴闲了一整天了。','别站着，说点儿新鲜的给我下酒。'],
+ '沧桑':['坐吧。人老了，就爱听人说说话。','今儿天气好，适合闲话。','（他挪了挪，给你让出半条凳子。）']
+};
 function openChatTopics(npcName){
   const npc=getNpc(npcName); if(!npc) return;
   const h=document.createElement('div');
@@ -7766,30 +7815,50 @@ function pickChat(style, topic, key, gender){
   return resolved[idx];
 }
 function chatSmall(npcName){
+  const npc=getNpc(npcName);
   const f=game.talkFatigue[npcName]||0;
   if(f>=3){
-    const npc=NPCS[npcName];
     logNpc(npcName, npc && npc.phrase ? '“'+npc.phrase+'”　（ta 摆摆手：话都说尽了，回头再聊。）' : '“……你今日的话，怕是比我这半辈子说的还多。容我歇歇。”');
     logInfo('（今日与'+npcName+'说得太多，好感不再上涨——明日再来吧。）');
     return;
   }
   game.talkFatigue[npcName]=f+1;
   const gA=affGain(npcName,2);
-  logNpc(npcName,'“你肯陪我说说话，已是极好。”（好感 +'+gA+'，今日闲谈 '+(f+1)+'/3）');
+  const style=(npc&&npc.style)||'沧桑';
+  // 开场白按人设轮换（近三句不重复），好感越高话越热络
+  const opens=CHAT_SMALL_OPEN[style]||CHAT_SMALL_OPEN['沧桑'];
+  const key='small:'+npcName;
+  const rec=SAY_RECENT[key]||[];
+  let idx=Math.floor(Math.random()*opens.length);
+  if(rec.length && rec.indexOf(idx)>-1){ const alt=opens.map(function(_,i){return i;}).filter(function(i){return rec.indexOf(i)===-1;}); if(alt.length) idx=alt[Math.floor(Math.random()*alt.length)]; }
+  SAY_RECENT[key]=rec.concat([idx]).slice(-3);
+  const warm=(player.aff[npcName]||0)>=40?'（话比先前熟络了许多。）':'';
+  logNpc(npcName,'“'+opens[idx]+'”　（好感 +'+gA+'，今日闲谈 '+(f+1)+'/3）'+warm);
   renderMap(); updateSidebar();
 }
 function chatWithNpc(npcName, topic){
   const npc=getNpc(npcName); if(!npc) return;
   const style=npc.style||'沧桑';
   const tp=CHAT_TOPIC_DEF.find(function(x){return x.id===topic;});
-  const reply=pickChat(style, topic, 'chat:'+npcName+':'+topic, npc.gender)||tp.q;
+  const aff=(player.aff[npcName]||0);
+  let reply=pickChat(style, topic, 'chat:'+npcName+':'+topic, npc.gender)||tp.q;
+  let prefix='';
+  // 低好感（初识未满）：五五开换成提防话——贴题、有性情，但话不到深处；聊着聊着人会暖
+  if(aff<15 && CHAT_WARY[style] && CHAT_WARY[style][topic] && Math.random()<0.5){
+    const arr=CHAT_WARY[style][topic], g=npc.gender==='女'?'f':'m';
+    const resolved=arr.map(function(el){ return typeof el==='string'?el:el[g]; });
+    reply=resolved[Math.floor(Math.random()*resolved.length)]||reply;
+    prefix='（话还不到深处……）';
+  }
   const pers=npcPersonality(npc);
   logDiv();
   logInfo('（你与 '+npcName+' 说起「'+tp.label+'」：'+tp.q+'）');
   logNpc(npcName,'（'+npcName+(pers.act?(' '+jp(pers.act)):'')+'）“'+reply+'”');
+  // 高好感：暖场后缀（老友感）
+  if(aff>=60 && CHAT_WARM[style] && Math.random()<0.5) logInfo(CHAT_WARM[style]);
   const gain= topic==='xinshi'?3:2;
   const gA=affGain(npcName, gain);
-  logInfo('（相谈甚欢，好感 +'+gA+'。如今：'+giftTierLabel(player.aff[npcName]||0)+' · '+Math.round(player.aff[npcName]||0)+'）');
+  logInfo((prefix?prefix:'（相谈甚欢，')+'好感 +'+gA+'。如今：'+giftTierLabel(player.aff[npcName]||0)+' · '+Math.round(player.aff[npcName]||0)+'）');
   if(topic==='xinshi' && (player.aff[npcName]||0)>=60 && npc.profile){
     logNpc(npcName,'“既然你问到这儿了……”（'+npc.profile+'）');
   }
