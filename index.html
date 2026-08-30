@@ -2487,6 +2487,32 @@ Object.assign(NPCS, NPCS_MUNI);
   });
 })();
 //<<MUNI-END>>
+//<<CLINIC-BEGIN>>
+// —— 回春医庐补建：各区域医馆覆盖（死亡就近救治链）——
+const ROOMS_CLINIC={"龙虎山·回春堂":{"area":"cheng_longhu","zone":"隐地","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["温杏林坐堂郎中"],"exits":{}},"蛮荒沙海·药堂":{"area":"cheng_shahai","zone":"险地","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["杜回春坐堂郎中"],"exits":{}},"山崖书院·回春庐":{"area":"cheng_shuyuan","zone":"名门","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["沈杏林坐堂郎中"],"exits":{}},"落魄山·回春庐":{"area":"cheng_luopo","zone":"名门","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["苏回春坐堂郎中"],"exits":{}},"天姥山·回春庐":{"area":"cheng_tianmu","zone":"隐地","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["白杏林坐堂郎中"],"exits":{}},"倒悬山·回春庐":{"area":"cheng_daoxuan","zone":"名门","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["程回春坐堂郎中"],"exits":{}},"桂花岛·回春庐":{"area":"cheng_dongsheng","zone":"大骊","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["柳杏林坐堂郎中"],"exits":{}},"剑气长城·回春帐":{"area":"cheng_changcheng","zone":"险地","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["纪回春坐堂郎中"],"exits":{}},"大骊皇宫·太医庐":{"area":"cheng_huanggong","zone":"大骊","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["邱杏林坐堂郎中"],"exits":{}},"芦花荡·回春堂":{"area":"cheng_luhua","zone":"大骊","bld":true,"desc":"门楣悬着药葫芦，药香从门缝里渗出来——伤兵病患，都认这块牌子。","npcs":["游回春坐堂郎中"],"exits":{}}};
+Object.assign(ROOMS, ROOMS_CLINIC);
+const NPCS_CLINIC={"温杏林坐堂郎中":{"title":"坐堂郎中","gender":"男","aff":24,"home":"龙虎山·回春堂","zone":"隐地","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（温杏林坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（温杏林坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"杜回春坐堂郎中":{"title":"坐堂郎中","gender":"男","aff":24,"home":"蛮荒沙海·药堂","zone":"险地","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（杜回春坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（杜回春坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"沈杏林坐堂郎中":{"title":"坐堂郎中","gender":"女","aff":24,"home":"山崖书院·回春庐","zone":"名门","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（沈杏林坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（沈杏林坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"苏回春坐堂郎中":{"title":"坐堂郎中","gender":"男","aff":24,"home":"落魄山·回春庐","zone":"名门","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（苏回春坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（苏回春坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"白杏林坐堂郎中":{"title":"坐堂郎中","gender":"男","aff":24,"home":"天姥山·回春庐","zone":"隐地","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（白杏林坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（白杏林坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"程回春坐堂郎中":{"title":"坐堂郎中","gender":"女","aff":24,"home":"倒悬山·回春庐","zone":"名门","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（程回春坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（程回春坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"柳杏林坐堂郎中":{"title":"坐堂郎中","gender":"男","aff":24,"home":"桂花岛·回春庐","zone":"大骊","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（柳杏林坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（柳杏林坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"纪回春坐堂郎中":{"title":"坐堂郎中","gender":"男","aff":24,"home":"剑气长城·回春帐","zone":"险地","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（纪回春坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（纪回春坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"邱杏林坐堂郎中":{"title":"坐堂郎中","gender":"女","aff":24,"home":"大骊皇宫·太医庐","zone":"大骊","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（邱杏林坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（邱杏林坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"},"游回春坐堂郎中":{"title":"坐堂郎中","gender":"男","aff":24,"home":"芦花荡·回春堂","zone":"大骊","style":"温婉","path":"凡俗","canKill":true,"hp":26,"atk":4,"def":1,"loot":["草药"],"likes":["草药"],"greet":"（游回春坐堂郎中放下脉枕，抬眼一笑）脸色不太好——坐，伸手，我给你看看。","talk":"（游回春坐堂郎中收着药戥子）伤筋动骨一百天，忌怒忌躁——药我给你配，命你自己养。","genState":"无恙"}};
+Object.assign(NPCS, NPCS_CLINIC);
+(function wireClinic(){
+  const OPP={n:"s",s:"n",e:"w",w:"e",nw:"se",se:"nw",ne:"sw",sw:"ne"};
+  const DIRS=["s","n","e","w","nw","ne","sw","se"];
+  [{"anchor":"龙虎山","room":"龙虎山·回春堂"},{"anchor":"蛮荒沙海","room":"蛮荒沙海·药堂"},{"anchor":"山崖书院","room":"山崖书院·回春庐"},{"anchor":"落魄山","room":"落魄山·回春庐"},{"anchor":"天姥山道","room":"天姥山·回春庐"},{"anchor":"倒悬山门","room":"倒悬山·回春庐"},{"anchor":"仙港大街","room":"桂花岛·回春庐"},{"anchor":"城道","room":"剑气长城·回春帐"},{"anchor":"大骊皇宫","room":"大骊皇宫·太医庐"},{"anchor":"芦花市集","room":"芦花荡·回春堂"}].forEach(function(w){
+    const a=ROOMS[w.anchor], r=ROOMS[w.room]; if(!a||!r) return;
+    const dir=DIRS.find(function(d){ return !a.exits||!a.exits[d]; })||"s";
+    if(!a.exits) a.exits={}; a.exits[dir]=w.room; r.exits=r.exits||{}; r.exits[OPP[dir]]=w.anchor;
+  });
+})();
+//<<CLINIC-END>>
+(function fixJiangwutang(){
+  if(ROOMS['大骊讲武堂']) return;
+  ROOMS['大骊讲武堂']={area:'cheng_jingcheng', zone:'大骊', desc:'讲武堂的院子里立着兵器架，木桩被打得坑坑洼洼——京营的把式都在这儿喂招。', bld:true, npcs:['讲武堂教头'], exits:{}};
+  const host=ROOMS['大骊京城·京城广场']?'大骊京城·京城广场':(Object.keys(ROOMS).find(function(rn){ return ROOMS[rn].area==='cheng_jingcheng'&&ROOMS[rn].exits&&Object.keys(ROOMS[rn].exits).length; }));
+  if(!host) return;
+  const OPP={n:'s',s:'n',e:'w',w:'e'};
+  const dir=['s','n','e','w'].find(function(d){ return !ROOMS[host].exits[d]; })||'s';
+  ROOMS[host].exits[dir]='大骊讲武堂';
+  ROOMS['大骊讲武堂'].exits[OPP[dir]]=host;
+})(); //讲武堂教头_IIFE
 
 
 // ---------- 敌人 ----------
@@ -5451,11 +5477,60 @@ function computeGridLayout(){
     }
     return null;
   }
+  // —— 全局微松弛（两分支共用）：挪格/换位，按字典序消解「隔格直连」「假邻」「格距」——
+  //    单调不劣化、有限步、可跳过 root。烘焙布局也过一遍：直连的房间不再隔着四个格子。
+  function relaxGrid(cell, occ, seq, adj, root){
+    function _cost4(v,x,y){
+      let st=0, man=0;
+      (adj[v]||[]).forEach(function(nb){
+        if(!cell[nb]) return;
+        const dd=Math.abs(x-cell[nb].cx)+Math.abs(y-cell[nb].cy);
+        man+=dd; if(dd>1) st++;
+      });
+      return [st, _falseAdj(x,y,v), man];
+    }
+    function _less(a,b){ for(let i=0;i<a.length;i++){ if(a[i]!==b[i]) return a[i]<b[i]; } return false; }
+    function _leq(a,b){ for(let i=0;i<a.length;i++){ if(a[i]>b[i]) return false; } return true; }
+    for(let pass=0; pass<8; pass++){
+      let improved=false;
+      seq.forEach(function(v){
+        if(v===root || !cell[v]) return;
+        const curX=cell[v].cx, curY=cell[v].cy, oldK=curX+','+curY;
+        const cur=_cost4(v,curX,curY);
+        let done=false;
+        delete occ[oldK];
+        for(let dx=-2; dx<=2 && !done; dx++) for(let dy=-2; dy<=2 && !done; dy++){
+          if(!dx && !dy) continue;
+          const nx=curX+dx, ny=curY+dy, k=nx+','+ny;
+          const other=occ[k];
+          if(other){
+            if(other===root || !cell[other]) continue;
+            const curOther=_cost4(other,cell[other].cx,cell[other].cy);
+            occ[oldK]=other; occ[k]=v;
+            cell[v]={cx:nx,cy:ny}; cell[other]={cx:curX,cy:curY};
+            const c1=_cost4(v,nx,ny), c2=_cost4(other,curX,curY);
+            if(_leq(c1,cur) && _leq(c2,curOther) && (_less(c1,cur)||_less(c2,curOther))){
+              improved=true; done=true;
+            } else {
+              occ[oldK]=v; occ[k]=other;
+              cell[v]={cx:curX,cy:curY}; cell[other]={cx:nx,cy:ny};
+            }
+          } else {
+            const c=_cost4(v,nx,ny);
+            if(_less(c,cur)){ occ[k]=v; cell[v]={cx:nx,cy:ny}; improved=true; done=true; }
+          }
+        }
+        if(!occ[oldK] && !done) occ[oldK]=v;
+      });
+      if(!improved) break;
+    }
+  }
   // —— 烘焙坐标表优先：草稿纸验收过的布局，按房间名直接落位；未命中（新房间/新层）回退运行时算法 ——
   const baked=(typeof BAKED_MAP_POS!=='undefined')?BAKED_MAP_POS[lv+'|'+(game.cheng||game.bld||'')]:null;
   const cell={}; const occ={};
   let bakedOk=!!(baked && nodes.length);
-  if(bakedOk){ nodes.forEach(function(n){ if(!baked[n]) bakedOk=false; }); }
+  // 缺席的房间由下方"贴已落位邻居"路径安放（后续增补的市政/医庐/宅院等）——
+  // 不再因个别新房间整体丢弃烘焙布局（那会把全城甩进运行时重排，视觉连线全乱）
   if(bakedOk){
     nodes.forEach(function(n){ if(baked[n]){ const c=baked[n]; cell[n]={cx:c[0],cy:c[1]}; occ[c[0]+","+c[1]]=n; } });
     // 烘焙表未收录的新房间（后续增补的宗门建筑等）：贴着已落位的邻居安放，保住烘焙布局
@@ -5476,6 +5551,11 @@ function computeGridLayout(){
         }
       }
       if(miss.length) bakedOk=false;
+      // 烘焙布局也过全局微松弛：消解"直连却隔格"（如回春医馆↔蒙学私塾）——单调不劣化
+      const seqB=nodes.slice();
+      const adjB2={}; nodes.forEach(function(n){ adjB2[n]=[]; });
+      edges.forEach(function(e){ adjB2[e[0]].push(e[1]); adjB2[e[1]].push(e[0]); });
+      relaxGrid(cell, occ, seqB, adjB2, null);
     }
   } else {
   if(root){ cell[root]={cx:0,cy:0}; occ['0,0']=root; }
@@ -5501,55 +5581,10 @@ function computeGridLayout(){
   let maxCx=0; for(const k in occ){ const nv=Number(k.split(',')[0]); if(isFinite(nv)) maxCx=Math.max(maxCx, nv); }
   if(!isFinite(maxCx)) maxCx=40;
   nodes.forEach(function(n){ if(!cell[n]){ maxCx+=1; cell[n]={cx:maxCx,cy:0}; occ[maxCx+',0']=n; seq.push(n); } });
-  // —— 全局微松弛（确定性、有限步）：挪格/换位只做局部微调，按字典序消解
-  //   ①图上直连却隔了格（远路） ②贴着却无路（假邻） ③到邻居总格距。根不挪。
+  // —— 全局微松弛（与烘焙分支共用 relaxGrid；root 不挪） ——
   const adj={}; nodes.forEach(function(n){ adj[n]=[]; });
   edges.forEach(function(e){ adj[e[0]].push(e[1]); adj[e[1]].push(e[0]); });
-  function _cost4(v,x,y){
-    let st=0, man=0;
-    (adj[v]||[]).forEach(function(nb){
-      if(!cell[nb]) return;
-      const dd=Math.abs(x-cell[nb].cx)+Math.abs(y-cell[nb].cy);
-      man+=dd; if(dd>1) st++;
-    });
-    return [st, _falseAdj(x,y,v), man];
-  }
-  function _less(a,b){ for(let i=0;i<a.length;i++){ if(a[i]!==b[i]) return a[i]<b[i]; } return false; }
-  function _leq(a,b){ for(let i=0;i<a.length;i++){ if(a[i]>b[i]) return false; } return true; }
-  for(let pass=0; pass<8; pass++){
-    let improved=false;
-    seq.forEach(function(v){
-      if(v===root || !cell[v]) return;
-      const curX=cell[v].cx, curY=cell[v].cy, oldK=curX+','+curY;
-      const cur=_cost4(v,curX,curY);
-      let done=false;
-      delete occ[oldK];
-      for(let dx=-2; dx<=2 && !done; dx++) for(let dy=-2; dy<=2 && !done; dy++){
-        if(!dx && !dy) continue;
-        const nx=curX+dx, ny=curY+dy, k=nx+','+ny;
-        const other=occ[k];
-        if(other){
-          if(other===root || !cell[other]) continue;
-          const curOther=_cost4(other,cell[other].cx,cell[other].cy);
-          // 交换试探：双方格位互换，双方皆不劣、其一更优才换
-          occ[oldK]=other; occ[k]=v;
-          cell[v]={cx:nx,cy:ny}; cell[other]={cx:curX,cy:curY};
-          const c1=_cost4(v,nx,ny), c2=_cost4(other,curX,curY);
-          if(_leq(c1,cur) && _leq(c2,curOther) && (_less(c1,cur)||_less(c2,curOther))){
-            improved=true; done=true;
-          } else {
-            occ[oldK]=v; occ[k]=other;
-            cell[v]={cx:curX,cy:curY}; cell[other]={cx:nx,cy:ny};
-          }
-        } else {
-          const c=_cost4(v,nx,ny);
-          if(_less(c,cur)){ occ[k]=v; cell[v]={cx:nx,cy:ny}; improved=true; done=true; }
-        }
-      }
-      if(!occ[oldK] && !done) occ[oldK]=v;
-    });
-    if(!improved) break;
-  }
+  relaxGrid(cell, occ, seq, adj, root);
   }
   // 网格参数（城镇/内室）
   const CELL_W=270;
@@ -5873,7 +5908,9 @@ function finishEnterCheng(id){
   const cfg=CHENG_CFG[id]; if(!cfg) return;
   game._walking=false; // 打断逐格步行（传送/进入城镇即停步）
   game.mapLevel='cheng'; game.cheng=id; game.bld=null;
-  const entry=cfg.entry;
+  // 回城记忆：上次在这座城里走到哪，就回到哪（舆图往返不再被拉回城门口）
+  const back=(game.cityReturn&&game.cityReturn[id])||cfg.entry;
+  const entry=(back && ROOMS[back] && ROOMS[back].area===id)?back:cfg.entry;
   if(ROOMS[entry]){
     player.room=entry;
     if(player.visited.indexOf(entry)===-1) player.visited.push(entry);
@@ -5885,6 +5922,11 @@ function finishEnterCheng(id){
 // —— 返回洲舆图 ——
 function exitToZhou(){
   game._walking=false; // 打断逐格步行
+  // 回城记忆：记下你在这座城里走到哪（回城时原位接续，不再被拉回城门）
+  if(game.cheng && player.room && ROOMS[player.room] && ROOMS[player.room].area===game.cheng){
+    game.cityReturn=game.cityReturn||{};
+    game.cityReturn[game.cheng]=player.room;
+  }
   const cid=game.cheng;
   game.mapLevel='zhou'; game.cheng=null; game.bld=null;
   player.room=cid||'cheng_lizhu';
@@ -7605,6 +7647,7 @@ const GIFT_REACT={
   hate:{cold:'她/他的眼神倏地冷了下来，将礼物推了回来。', warm:'她/他脸上的笑意淡去，把东西轻轻搁回你手里。', hot:'她/他怔了怔，眼底划过一丝痛色，缓缓道：这物什……你留着罢。'}
 };
 function giveGift(npcName, item){
+  game.flags=game.flags||{}; game.flags.giftOnce=true; // 新手引导：送过礼
   const npc=getNpc(npcName); if(!npc) return;
   if(game.giftTick>0){
     log('（人情要细水长流——今日已赠过礼，过些日子再来吧。）','sys');
@@ -9942,7 +9985,7 @@ function practiceSkill(skill){
   if(!spendPotential(cost)){ log('（演练「'+skill+'」须 '+cost+' 点潜能——潜能不足，去江湖上多走多打）','sys'); return; }
   advanceTime(1);
   const t0=masteryTier(skill);
-  player.skillExp[skill]=(player.skillExp[skill]||0)+25;
+  player.skillExp[skill]=(player.skillExp[skill]||0)+25; game.flags=game.flags||{}; game.flags.practicedOnce=true;
   const t1=masteryTier(skill);
   if(t1>t0){
     logTitle('—— 「'+skill+'」精进 ——');
@@ -15106,6 +15149,7 @@ function restAtHome(){
   game.restCd=10;
   player.hp=player.maxHp; player.mp=effMaxMp();
   if(def.heal) player.wound=0;
+  game.flags=game.flags||{}; game.flags.sleptHome=true; // 新手引导：回家安睡立户
   logSuccess('（回到家中，热水、暖饭、软榻——一身风尘尽洗。'+(def.heal?'伤势也妥帖平复。':'')+'）');
   updateSidebar();
 }
@@ -15826,14 +15870,57 @@ function tutSet(k){
   try{ tutHint(); }catch(e){}
 }
 const TUT_STEPS=[
-  {hint:function(){ return '（'+tutMentorName()+'远远看着你：初来乍到——先点开「✦ 就地行事」，把四周打量一番。）'; }, done:function(){ return game.tutFlags.look; }, rw:function(){ return '（眼观六路，是江湖第一步。）'; }},
+  {hint:function(){ return '（'+tutMentorName()+'远远看着你：初来乍到——先点开「✦ 就地行事」，把四周打量一番。）'; }, done:function(){ return game.tutFlags.look; }, rw:function(){ return '（眼观六路，是江湖第一步。）'; }, onDone:function(){ grantStarterHouse(); }},
   {hint:function(){ return '（'+homeRoom()+'虽好，总要走出去——点舆图上的地名，或直接点相邻的格子，出去走走。）'; }, done:function(){ return player.visited.length>2; }, rw:function(){ return '（路是走出来的，不是想出来的。）'; }},
   {hint:function(){ return '（江湖是人组成的——在人物栏里点一个人，跟他攀谈几句。）'; }, done:function(){ return game.tutFlags.talk; }, rw:function(){ return '（会说话的人，比会出拳的人走得远。）'; }},
-  {hint:function(){ return '（修炼是根本。点「修炼」——先从吐纳调息学起，气府一日只纳一度修为。）'; }, done:function(){ return game.tutFlags.cult; }, rw:function(){ return '（气府一日只纳一度修为——贪多不化，明日再来。）'; }},
+  {hint:function(){ return '（点「行囊」——认一认你的兵刃衣甲，能穿的就穿上。）'; }, done:function(){ return game.flags.packOnce===true; }, rw:function(){ return '（人靠衣甲马靠鞍——江湖行走，先把自己武装好。）'; }},
+  {hint:function(){ return '（点「修炼」：先吐纳调息，再用「演练功法」把潜能磨进招式里——功夫是磨出来的。）'; }, done:function(){ return game.tutFlags.cult && game.flags.practicedOnce===true; }, rw:function(){ return '（功夫是磨出来的——潜能别攒着，化进招式里才算你的。）'; }, onDone:function(){ giftCultStarter(); }},
   {hint:function(){ return '（镇外的世界很大——试着去远一点的地方（走远路或找「行旅」），长长见闻。）'; }, done:function(){ return player.visited.length>=5; }, rw:function(){ return '（见过了，才算见过。见闻日日都在长。）'; }},
   {hint:function(){ return '（人在江湖，难免动手——遇敌时记住：回合制，出招、守御、逃走都在下方，打不过就跑。）'; }, done:function(){ return game.tutFlags.fight; }, rw:function(){ return '（打不打得过是本事，该不该打是学问。）'; }},
-  {hint:function(){ return '（身无立锥之地，终究是浮萍——攒够银两，去「家园」置办一处安身的宅子。）'; }, done:function(){ return (player.manor&&player.manor.tier>=1); }, rw:function(){ return '（有了家，江湖才算有了根。）'; }}
+  {hint:function(){ return '（点「任务剧情」——任务栏里已有你能接的委托，挑一件接下，江湖就有方向了。）'; }, done:function(){ return game.quests.length>=1; }, rw:function(){ return '（有委托的人，走路都带风。）'; }},
+  {hint:function(){ return '（人情是走出来的——在人物栏挑一个人，「赠礼」一份投其所好的东西。）'; }, done:function(){ return game.flags.giftOnce===true; }, rw:function(){ return '（一份薄礼，胜过千言——人情的账，从今天记起。）'; }},
+  {hint:function(){ return '（'+tutMentorName()+'替你置下的祖宅就在'+homeRoom()+'——回「家园」安睡一晚，睡前记得「存档」。）'; }, done:function(){ return game.flags.sleptHome===true && game.flags.savedOnce===true; }, rw:function(){ return '（有了家，存了档——江湖才算真正开了张。）'; }}
 ];
+// —— 引导修习礼：传一课吐纳 + 按职业赠入门功法 + 40 潜能（演练教学用） ——
+function giftCultStarter(){
+  try{
+    const got=addPotential(40);
+    logSkill('（'+tutMentorName()+'传了你一课呼吸吐纳的法门——潜能 +40。去「修炼 → 演练功法」，把潜能磨进招式里。）');
+    const GIFT={
+      '练气士':['青虹剑诀','（又塞给你一卷《青虹剑诀》抄本：练气士的手，也该有一柄剑。）'],
+      '剑修':['流云十三剑','（又丢给你一册《流云十三剑》残页：一式是剑，两式是江湖。）'],
+      '体修':['破风刀法','（又扔给你一本《破风刀法》：刀是武夫的第一件兵器。）']
+    }[player.path];
+    if(GIFT && SKILLS[GIFT[0]] && !hasSkill(GIFT[0])){
+      player.skills.push(GIFT[0]);
+      logSkill(GIFT[1]);
+    }
+  }catch(e){}
+}
+// —— 引导赠宅：各出生地的祖传小屋（家家有本难念的经，但好歹有个门） ——
+const STARTER_HOUSE={
+  '泥瓶巷':{name:'泥瓶巷老宅', lore:'巷底那间漏雨的老屋——齐静春替你置办的：房是旧的，门是新的。'},
+  '大骊京城':{name:'京城祖宅', lore:'京城东角一处小小的祖宅，灰墙黑瓦——京兆府的册子上，如今写的是你的名字。'},
+  '龙虎山':{name:'山脚道院', lore:'龙虎山脚的小道院，一炉一蒲团——张天师差人扫了三扫帚。'},
+  '青莲洞天':{name:'莲畔小筑', lore:'莲池边的小筑，推窗即荷香——红衣姑娘遣人送来的钥匙。'},
+  '北俱雪山':{name:'雪山石屋', lore:'背风的石屋，炉膛烧得正旺——北俱剑隐说，雪夜里有个门，就死不了人。'},
+  '蛮荒沙海':{name:'绿洲土屋', lore:'绿洲边的土坯屋，门厚墙厚——商队的人说，沙海里有个门，就是活着。'},
+  '藕花福地':{name:'藕花小院', lore:'藕花深处的小院，半亩水塘——渔家的老规矩，屋随水走。'},
+  '云来客栈':{name:'客栈后院', lore:'云来客栈的后跨院——掌柜的抹不开你的面子，房钱记账上了。'}
+};
+function grantStarterHouse(){
+  try{
+    if(player.manor && player.manor.tier) return; // 已有宅邸者不重复赠
+    const born=homeRoom();
+    const def=STARTER_HOUSE[born]||{name:'祖传小院', lore:'一处安身的小院——不大，但门是你的。'};
+    player.manor={tier:1, name:def.name};
+    ensureHomeRooms(); // 祖宅房间即刻上舆图（正堂挂在出生地旁）
+    logTitle('—— 安 身 · '+def.name+' ——');
+    logSuccess(def.lore);
+    logInfo('（「家园」面板可查看宅邸；走回'+homeRoom()+'旁的「正堂」可安睡到天明——气血内力全满，疲乏尽去。）');
+    try{ ensureHomeRooms(); }catch(e){}
+  }catch(e){}
+}
 function tutHintText(s){ return typeof s.hint==='function'?s.hint():s.hint; }
 function tutHint(){
   if(!game.tutFlags) game.tutFlags={}; // 自愈：旧档/开局重置后缺失也不至于抛错
@@ -15843,7 +15930,7 @@ function tutHint(){
   const cur=TUT_STEPS.filter(function(s){ return !s._done; })[0];
   const idx=TUT_STEPS.indexOf(cur);
   // 完成检测：把所有未完成且已达成的步一并结掉（跳步也算，不卡人）
-  TUT_STEPS.forEach(function(s){ if(!s._done && s.done()){ s._done=true; s.rw(); } });
+  TUT_STEPS.forEach(function(s){ if(!s._done && s.done()){ s._done=true; s.rw(); if(s.onDone) s.onDone(); } });
   if(TUT_STEPS.every(function(s){ return s._done; })){
     game.tutDone=1;
     tb.innerHTML=''; // 毕业：提示条功成身退
@@ -19428,6 +19515,7 @@ function itemDetail(name){
   openModal(itemLabel(name)+' · 详情', ()=>h);
 }
 function openBackpack(){
+  game.flags=game.flags||{}; game.flags.packOnce=true; // 新手引导：认过行囊
   const h=document.createElement('div');
   const head=document.createElement('div'); head.style.cssText='color:#c9c9cf;font-size:.72em;letter-spacing:2px;margin-bottom:6px;';
   head.textContent='（点击可用的物品直接使用；武器/防具/饰品/衣装点击即穿戴。）';
@@ -20925,7 +21013,7 @@ registerCmd('heal', { label:'疗伤', desc:'敷药或运功疗伤', fn:function(
 registerCmd('rest', { label:'调养', desc:'歇息调养，恢复气血', fn:function(){ restAction(); } });
 registerCmd('pack', { label:'行囊', desc:'使用物品 / 穿戴装备', fn:function(){ openBackpack(); } });
 registerCmd('cultivate', { label:'修炼', desc:'修炼 · 破境', fn:function(){ openCultPanel(); } });
-registerCmd('save', { label:'存档', desc:'保存游戏进度', fn:function(){ saveGame(); } });
+registerCmd('save', { label:'存档', desc:'保存游戏进度', fn:function(){ saveGame(); game.flags=game.flags||{}; game.flags.savedOnce=true; } });
 registerCmd('look', { label:'环顾', desc:'环顾四周', fn:function(){ tutSet('look'); look(); } });
 registerCmd('move_n', { label:'向北', fn:function(){ moveDir('n'); } });
 registerCmd('move_s', { label:'向南', fn:function(){ moveDir('s'); } });
