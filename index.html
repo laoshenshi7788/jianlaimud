@@ -3401,6 +3401,7 @@ const GEN_COMMON={
   repute_drop:['（风向变了——江湖上说起{name}，语气再没了从前的热络。）','（旧日夸你的，如今摇头；旧日怕你的，如今冷笑。）'],
   repute_flip:['（江湖看不懂你了：一会夸，一会骂，最后只能一句“此人反复无常”。）'],
   view_praise:['（'+'见者肃然起敬：久仰久仰，如今江湖上谁不知道你的名号！'+'）','（'+'对方让开一步，郑重抱拳：有礼了。'+'）'],
+  view_cold:['（'+'那人抬头看了你一眼，客气地点头致意：面生得很——多走动走动，就熟了。'+'）','（'+'对方客气地还了半礼：幸会幸会。初次见面，多多关照。'+'）','（'+'那人冲你微微颔首：外乡来的？这方水土不欺生。'+'）'],
   view_fear:['（'+'那人见你走近，下意识攥紧行囊，后退半步。）','（'+'对方喉咙动了动：你、你别过来……'+'）'],
   view_scorn:['（'+'那人呸了一声：沾了这等名声，也配踏进此门？'+'）','（'+'对方冷冷扫你一眼，到嘴边的话又咽了回去。'+'）'],
   view_wary:['（'+'那人目光闪烁，一边说话一边打量你的腰刀。）','（'+'对方干笑一声：江湖路远，各有各走。'+'）']
@@ -7418,6 +7419,21 @@ let talkingNpc=null;
 function talkTo(npcName){
   tutSet('talk');
   const npc=getNpc(npcName); if(!npc) return;
+  // —— 初见三分情：第一次照面不从冰点开始 ——
+  // 温度取自人设（npc.aff），同乡加成，市井人物天生热心；冷面人（马苦玄之流）依旧冷，但冷得有分寸
+  if(player.aff[npcName]==null){
+    let seed=Math.round(Math.min(25, Math.max(5, (npc.aff||12)*0.6)));
+    const idTxt=npcName+(npc.title||'');
+    if(/店小二|货郎|民妇|说书人|镇民|伙计|掌柜|船老大|马倌|塾师|茶博士|郎中|大夫|小贩|渔|农|樵|挑夫|婢/.test(idTxt)) seed+=5; // 市井热心肠
+    if(player.birthArea && npc.home && ROOMS[npc.home] && ROOMS[npc.home].area===player.birthArea) seed+=6; // 同乡三分情
+    if((npc.style==='冷峻'||npc.mysterious) && !(npc.aff>=20)) seed=Math.min(seed,6); // 冷面人：点头之交（加成之后才压，冷得有分寸）
+    seed=Math.max(3, Math.min(25, seed));
+    player.aff[npcName]=seed;
+    const meetLine= seed>=20 ? '（你与'+npcName+'初见，却像旧相识——话匣子一开就收不住。）'
+      : seed>=10 ? '（初见'+npcName+'，客客气气——乡里乡亲，总有几分薄面。）'
+      : '（'+npcName+'不冷不热地点了点头——江湖初见，本就如此。）';
+    logInfo(meetLine+'（初识好感 '+seed+'）');
+  }
   hookCodexNpc(npcName); // 图鉴：人物谱
   talkingNpc=npcName;
   logDiv();
@@ -12194,11 +12210,10 @@ function npcViewOf(n){
   if(i<30 && pa>=30 && v==='冷淡') v='不熟';
   if(i<30 && pa>=60 && (v==='不熟'||v==='冷淡') && good) v='敬重';
   if(pa>=85 && v==='戒备' && good) v='敬重';
-  // 年岁：少年被看轻，宿老受敬重
+  // 年岁：少年得志者受敬重；寻常少年只是"不熟"——谁会见了陌生人就当贼防？（v3.2.1：删去年岁冷淡降档）
   const ageAdj=ageBonus().viewAdj;
   if(ageAdj>=2 && v==='不熟') v= good?'敬重':v;
   else if(ageAdj>=1 && v==='不熟' && f>=40) v= good?'敬重':v;
-  else if(ageAdj<=-1 && v==='不熟' && pa<30) v= '冷淡'; // 私交好的， age 也不再冷脸
   // 流言压身：正派见非议而皱眉，好事者反倒凑上来——私交深厚者，宁可不信流言
   if(game.gossip && game.gossip.kind==='非议'){
     if(pa>=50 && v!=='厌恶') return v; // 交情够深：流言撼不动
@@ -12210,7 +12225,7 @@ function npcViewOf(n){
   }
   return v;
 }
-const VIEW_POOL_MAP={'仰慕':'view_praise','敬重':'view_praise','忌惮':'view_wary','警惕':'view_wary','讨好':'view_fear','同道':'view_wary','冷淡':'view_wary','戒备':'view_wary','厌恶':'view_scorn'};
+const VIEW_POOL_MAP={'仰慕':'view_praise','敬重':'view_praise','忌惮':'view_wary','警惕':'view_wary','讨好':'view_fear','同道':'view_wary','冷淡':'view_cold','戒备':'view_wary','厌恶':'view_scorn'};
 function npcViewLine(name){
   const v=npcViewOf(name);
   if(v==='不熟') return null;
@@ -20549,6 +20564,7 @@ function applyStartup(bgId){
   const spot=START_SPOTS.find(function(s){ return s.id===bg.spot; })||START_SPOTS[0];
   player.background=bg.id; player.bgName=bg.name;
   player.birthPlace=spot.id; player.birthPlaceName=spot.name;
+  player.birthArea=ROOMS[bg.home||spot.room||'泥瓶巷']?(ROOMS[bg.home||spot.room||'泥瓶巷'].area):(spot.id); // 生身地界：同乡判定的根
   // 出身落脚：生在何处，便从何处开始
   player.room=bg.home||spot.room||'泥瓶巷';
   player.visited=[player.room];
