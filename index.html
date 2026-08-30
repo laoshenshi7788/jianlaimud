@@ -7440,6 +7440,29 @@ function npcRealm(name){
   if(npc.atk){ return npc.atk>=14?5:(npc.atk>=10?4:(npc.atk>=7?2:1)); }
   return 1+(name.length%2);
 }
+// —— NPC 功法/法宝/境界数据（20 位特殊 NPC 的武学体系）——
+const NPC_GEAR={
+  '齐静春':{gongfa:'文圣剑诀',artifact:'文圣玉印',realm:14},
+  '陈平安':{gongfa:'剑气长城十八斩',artifact:'落魄山印',realm:13},
+  '阿良':{gongfa:'道理剑',artifact:'斩龙',realm:15},
+  '左右':{gongfa:'大道剑术',artifact:'止水',realm:13},
+  '陈清都':{gongfa:'剑斩星光',artifact:'道藏真形',realm:16},
+  '宁姚':{gongfa:'宁氏剑术',artifact:'剑仙遗锋',realm:15},
+  '裴杯':{gongfa:'武神罡气',artifact:'武神印',realm:15},
+  '崔瀺':{gongfa:'纵横棋局',artifact:'绣虎棋盘',realm:10},
+  '崔东山':{gongfa:'文圣新解',artifact:'分身玉符',realm:12},
+  '魏檗':{gongfa:'北岳镇岳',artifact:'北岳金印',realm:13},
+  '张天师':{gongfa:'掌心雷·天师版',artifact:'天师印',realm:12},
+  '北俱剑隐':{gongfa:'寒潭剑意',artifact:'冰魄剑心',realm:12},
+  '慧明方丈':{gongfa:'金刚不坏',artifact:'三色袈裟',realm:11},
+  '郑大风':{gongfa:'大骊银甲枪',artifact:'银甲残片',realm:9},
+  '阮邛':{gongfa:'兵家锻体',artifact:'剑炉真火',realm:8},
+  '朱敛':{gongfa:'落魄山管家功',artifact:'竹枝铜哨',realm:8},
+  '崔诚':{gongfa:'大骊铁浮屠',artifact:'铁浮屠印',realm:9},
+  '米裕':{gongfa:'米家商算',artifact:'算盘玉佩',realm:7},
+  '刘羡阳':{gongfa:'阮家锻体拳',artifact:'阮家剑穗',realm:6},
+  '马苦玄':{gongfa:'幽冥渡魂',artifact:'渡魂铃',realm:6}
+};
 function attackNpc(npcName){
   const npc=getNpc(npcName); if(!npc) return;
   if(game.npcDead[npcName]){ log('（他已不在人世）','sys'); return; }
@@ -7469,7 +7492,12 @@ function attackNpc(npcName){
     renderMap(); updateSidebar();
     return;
   }
-  const hp=npc.hp||60, atk=npc.atk||10, def=npc.def||5;
+  let hp=npc.hp||60, atk=npc.atk||10, def=npc.def||5;
+  // —— NPC 功法/法宝/境界加成（NPC_GEAR 数据联入战斗）——
+  const gear=NPC_GEAR[npcName];
+  if(gear){
+    atk+=gear.realm*2; def+=gear.realm;
+  }
   logDiv();
   logCombat('你骤然出手，袭向'+npcName+'！');
   logInfo('（'+npcName+'：'+npc.greet+'）');
@@ -9703,6 +9731,13 @@ function onEnemyDefeated(){
   recordEnemy(battle.name,'w');
   battleLog('—— 「'+battle.name+'」轰然倒地！——','combat');
   battleLog(flair('win'),'sys');
+  // —— BOSS 掉落表：稀有机缘——大妖陨落，天地异宝现世 ——
+  if(battle.isBoss && Math.random()<0.35){
+    const bossDrops=['龙骨','妖血','星纹砂','天外陨铁','寒玉髓','龙涎香碎'];
+    const drop=jp(bossDrops);
+    addItem(drop);
+    logItem('（'+battle.name+' 陨落之处，遗落了「'+drop+'」——天地灵气凝聚之物！）');
+  }
   advanceTime(3); // 一场恶战，大半天过去
   const diffNote= expGain>battle.exp?'（迎难而上，收获颇丰）':(expGain<battle.exp?'（对手太弱，所得有限）':'');
   logSuccess('你击败「'+battle.name+'」！经验 +'+expGain+diffNote+'，银两 +'+gold+'。');
@@ -11748,6 +11783,10 @@ function openSmithPanel(){
         }
         addItem(outN);
         logSuccess('（锤声三响，火星四溅——「'+outN+'」成器！铁砧上寒光凛凛。）');
+        if(tag){
+          const affixText={'精铸':'炉火纯青，铁胚剔透如水晶。','珍品':'剑身隐有灵光流转——万里挑一。','绝品':'剑成那一刻，方圆百里剑气共鸣！'};
+          logInfo('（'+affixText[tag]+'）');
+        }
       } else {
         const half=Object.keys(rp.in).filter(function(){ return Math.random()<0.5; });
         half.forEach(function(k){ addItem(k); });
