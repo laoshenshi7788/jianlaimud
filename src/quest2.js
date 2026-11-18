@@ -315,6 +315,34 @@
       else if (cat === '支线') cat = 'side';
       else cat = cat || 'side';
 
+      // 旧任务结构补强：给杀/采阶段挂非战斗路径，给所有任务加一次收尾抉择。
+      // 只改适配后的副本，不碰原始 QUESTS 表；因此 446 条旧任务可零改写获得机制深度。
+      var h = 0, _ci;
+      for (_ci = 0; _ci < id.length; _ci++) h = (h * 31 + id.charCodeAt(_ci)) >>> 0;
+      for (_ci = 0; _ci < stages.length; _ci++) {
+        var stg = stages[_ci];
+        if (!stg) continue;
+        if (stg.type === 'kill' && !stg.alt) stg.alt = ['poison', 'lure', 'bribe'];
+        if (stg.type === 'collect' && !stg.alt) {
+          stg.alt = ['buy'];
+          stg.altCost = Math.max(5, Math.round((q.reward && q.reward.gold ? q.reward.gold : 20) * 0.25));
+        }
+      }
+      var hasChoice = false;
+      for (_ci = 0; _ci < stages.length; _ci++) if (stages[_ci] && stages[_ci].type === 'choice') hasChoice = true;
+      if (!hasChoice) {
+        var giver0 = q.giver || q.turnin || '委托人';
+        stages.push({
+          id: 's' + stages.length, type: 'choice',
+          desc: '收尾之际，你打算如何交代？',
+          choices: [
+            { text: '照实回禀', effects: [{ flag: 'j_' + id + '_frank' }, { aff: [giver0, 3] }] },
+            { text: '留一手，只说成事', effects: [{ flag: 'j_' + id + '_quiet' }, { gold: 5 }] },
+            { text: '多问一句缘由', effects: [{ flag: 'j_' + id + '_ask' }, { fame: 1 }] }
+          ]
+        });
+      }
+
       // 附录 A：旧 reward{item} 归一为新 reward{items:[{name,n}]}
       var reward = {};
       if (q.reward && typeof q.reward === 'object') {
@@ -352,6 +380,7 @@
         if (q[carry[c]] !== undefined) d[carry[c]] = q[carry[c]];
       }
       if (q.ttl && !d.fail) d.fail = { type: 'time', turns: q.ttl, penalty: {} };
+      if (!d.fail && d.cat !== 'daily') d.fail = { type: 'time', turns: 30 + (h % 20), penalty: { fame: -1 } };
       if (id) _adapted[id] = d;
       return d;
     } catch (e) { jl2_err('jl2_adaptLegacy ' + (forcedId || ''), e); return null; }
@@ -606,8 +635,9 @@
       }
       case 'talk': {
         var npc = stage.npc || stage.what || '';
-        if (t === 'talk' && (!npc || jl2_match(ev.npc || ev.who, npc)) &&
-            (!stage.topic || ev.topic === stage.topic)) pr.n = 1;
+        // topic 降为可选 flavor：全局 talk 事件只广播 npc，从不广播 topic，
+        // 若仍以 topic 为门槛，拜会永不成立。故只要 npc 命中即算完成。
+        if (t === 'talk' && (!npc || jl2_match(ev.npc || ev.who, npc))) pr.n = 1;
         if (g && g.flags && g.flags['qTalk_' + id]) pr.n = 1; // 旧版拜会标记
         done = (pr.n || 0) >= 1;
         break;
@@ -834,6 +864,7 @@
           jl2_refreshUI();
         }
       }
+      jl2_renderQuestPanelActions();
     } catch (e) { jl2_err('jl2_questAdvance ' + id, e); }
     finally { delete _advancing[id]; }
   }
@@ -934,6 +965,7 @@
       jl2_refreshUI();
       // 首帧用当前世界状态判定一次（如 reach/aff 已满足）
       jl2_questAdvance(id, 'accept', { quest: id }, true);
+      jl2_renderQuestPanelActions();
       return true;
     } catch (e) { jl2_err('jl2_questAccept ' + id, e); return false; }
   }
@@ -999,6 +1031,10 @@
       if (g) {
         if (!g.questDone) g.questDone = {};
         g.questDone[id] = true;
+        // 章节链靠 game.flags[id] 解锁后续（第一章六条就是这么接的）：
+        // 过去只写 qlog.done，导致 m1_02 的 lock.flags['jl2_m1_01'] 永远不成立。
+        if (!g.flags) g.flags = {};
+        g.flags[id] = true;
         if (def.cat === 'daily') {
           jl2_dailyRoll(log);
           if (log.daily.done.indexOf(id) < 0) log.daily.done.push(id);
@@ -1009,6 +1045,23 @@
       jl2_logSuccess('—— 完成任务 “' + (def.title || id) + '” ' + (summary || '') + ' ——');
       jl2_emit('quest', { quest: id, phase: 'done', branch: branch });
       jl2_refreshUI();
+
+      // 交付对白：对白选项的 effects 里可能再触发 turnin，用 game 级 guard 截断递归。
+      var pd = (typeof jl2_playDialogue === 'function') ? jl2_playDialogue :
+               ((G && typeof G.jl2_playDialogue === 'function') ? G.jl2_playDialogue : null);
+      if (pd && def.dialogue && def.dialogue.turnin) {
+        var gg = jl2_game();
+        if (gg) {
+          if (!gg._jl2TurninDlg) gg._jl2TurninDlg = {};
+          if (!gg._jl2TurninDlg[id]) {
+            gg._jl2TurninDlg[id] = true;
+            try { pd(def.dialogue.turnin, { quest: id, npc: def.turnin || def.giver || '' }); }
+            catch (e2) { jl2_err('turnin dialogue ' + id, e2); }
+            finally { delete gg._jl2TurninDlg[id]; }
+          }
+        }
+      }
+      jl2_renderQuestPanelActions();
       return true;
     } catch (e) { jl2_err('jl2_questTurnIn ' + id, e); return false; }
   }
@@ -1020,26 +1073,38 @@
       if (!a) return false;
       var def = jl2_questDef(id);
       if (!def) return false;
+      var stages = jl2_stages(def);
+
+      // 兼容面板按钮传来的数字下标 String(index)：解析成该 choice 的语义分支键。
+      // m1_01 等章节任务的 choice 多无 key 字段，此时保留数字串（jl2_findChoice
+      // 已支持 String(i) === String(branch) 的下标匹配）。
+      var branchKey = key;
+      var si = stageId ? jl2_stageIndex(def, stageId) : -1;
+      if (si >= 0 && /^\d+$/.test(String(key))) {
+        var cs = stages[si], ci = cs && cs.choices && cs.choices[Number(key)];
+        if (ci) branchKey = ci.key || ci.branch || ci.id || String(key);
+      }
 
       // 任务级 branch（影响后续任务/NPC/世界）
-      if (def.branch && def.branch.options && def.branch.options[key] !== undefined) {
-        a.branch = key;
-        var bo = def.branch.options[key];
-        jl2_applyEffects(bo.effects, { id: id, def: def, a: a, branch: key });
-        jl2_emit('choice', { quest: id, branch: key, stage: stageId || null });
+      if (def.branch && def.branch.options && def.branch.options[branchKey] !== undefined) {
+        a.branch = branchKey;
+        var bo = def.branch.options[branchKey];
+        jl2_applyEffects(bo.effects, { id: id, def: def, a: a, branch: branchKey });
+        jl2_emit('choice', { quest: id, branch: branchKey, stage: stageId || null });
         jl2_refreshUI();
+        jl2_renderQuestPanelActions();
         return true;
       }
 
       // 阶段级 choice：推进状态机，由 stageDone 统一结算 effects / goto
-      var stages = jl2_stages(def);
       for (var i = 0; i < stages.length; i++) {
         var st = stages[i];
         if (stageId && st.id !== stageId) continue;
         if (st.type !== 'choice' || a.stage !== i) continue;
         if (!jl2_findChoice(st, key)) continue;
         a.prog[st.id || ('s' + i)] = {}; // 交给 stageDone 计次并套用 effects
-        jl2_questAdvance(id, 'choice', { quest: id, branch: key, stage: st.id || ('s' + i) }, true);
+        jl2_questAdvance(id, 'choice', { quest: id, branch: branchKey, stage: st.id || ('s' + i) }, true);
+        jl2_renderQuestPanelActions();
         return true;
       }
       return false;
@@ -1125,6 +1190,141 @@
     } catch (e) { jl2_err('jl2_questTrackerText', e); return ''; }
   }
 
+  /* ============================================================
+   * 8b. 任务面板操作区（choice 抉择 / 交付 / 简明目标）
+   *     index.html 提供 <div id="jl2-quest-actions"></div> 容器。
+   * ========================================================== */
+  function jl2_esc(s) {
+    s = String(s == null ? '' : s);
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function jl2_bindQuestPanelActions(container) {
+    if (container.__jl2QuestActBound) return;
+    container.__jl2QuestActBound = true;
+    container.addEventListener('click', function (ev) {
+      var t = ev && ev.target, btn = null;
+      while (t && t !== container) {
+        if (t.tagName && String(t.tagName).toLowerCase() === 'button' &&
+            t.getAttribute && t.getAttribute('data-jl2q') != null) { btn = t; break; }
+        t = t.parentNode;
+      }
+      if (!btn) return;
+      var id = btn.getAttribute('data-jl2q');
+      try {
+        if (btn.getAttribute('data-jl2t')) jl2_questTurnIn(id);
+        else if (btn.getAttribute('data-jl2a')) jl2_legacyAlt(id, btn.getAttribute('data-jl2a'), btn.getAttribute('data-jl2s'));
+        else jl2_questChoose(id, btn.getAttribute('data-jl2c'), btn.getAttribute('data-jl2s'));
+      } catch (e) { jl2_err('jl2QuestPanelAction', e); }
+      jl2_renderQuestPanelActions();
+    });
+  }
+
+  // 旧任务非战斗路径：买通/下毒/引开/购买，都通过事件总线被 Stage 消费
+  function jl2_legacyAlt(id, altType, stageId) {
+    try {
+      var q = jl2_qlog(), a = q && q.active && q.active[id];
+      if (!a) return false;
+      var def = jl2_questDef(id);
+      if (!def) return false;
+      var stages = jl2_stages(def);
+      var st = null;
+      for (var i = 0; i < stages.length; i++) {
+        if ((stages[i].id || ('s' + i)) === stageId) { st = stages[i]; break; }
+      }
+      if (!st) return false;
+      if (altType === 'buy' && st.type === 'collect') {
+        var cost = Math.max(1, Math.round(st.altCost || 10));
+        var p = jl2_player();
+        if (!p || (p.gold || 0) < cost) { jl2_log('（银两不足，买不来这些材料。）', 'sys'); return false; }
+        p.gold -= cost;
+        var need = Math.max(1, st.need || 1);
+        for (var n = 0; n < need; n++) jl2_addItem(st.item || st.what, 1);
+        jl2_log('（你花 ' + cost + ' 两从行商手里买齐了 ' + (st.item || st.what) + '。）', 'sys');
+        jl2_emit('item', { name: st.item || st.what, delta: need, from: 'buy' });
+      } else {
+        jl2_emit(altType, {
+          quest: id, enemy: st.enemy || st.what, altKill: st.enemy || st.what,
+          item: st.item || st.what, npc: st.npc || def.turnin || def.giver
+        });
+        jl2_log('（你换了条路子：' + altType + '。）', 'sys');
+      }
+      return true;
+    } catch (e) { jl2_err('jl2_legacyAlt', e); return false; }
+  }
+
+  function jl2_renderQuestPanelActions() {
+    if (typeof document === 'undefined' || !document.getElementById) return;
+    try {
+      var container = document.getElementById('jl2-quest-actions');
+      if (!container) return;
+      var q = jl2_qlog(), html = '';
+      if (q && q.active) {
+        var ids = Object.keys(q.active);
+        for (var i = 0; i < ids.length; i++) {
+          var id = ids[i], a = q.active[id];
+          if (!a) continue;
+          var def = jl2_questDef(id);
+          if (!def) continue;
+          var title = def.title || id;
+          var stages = jl2_stages(def);
+          var st = (a.stage >= 0 && a.stage < stages.length) ? stages[a.stage] : null;
+
+          // 非战斗路径：旧任务适配后也会带 alt，给玩家真正的选择而不是文案
+          if (st && Array.isArray(st.alt) && st.alt.length) {
+            var sidAlt = st.id || ('s' + a.stage);
+            var altNames = { poison: '下毒', lure: '引兽相斗', bribe: '买通', buy: '花钱买齐', detour: '绕行' };
+            html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + '：另有路子</div>';
+            for (var ai = 0; ai < st.alt.length; ai++) {
+              var av = st.alt[ai], at = (typeof av === 'string') ? av : (av && av.type);
+              if (!at) continue;
+              html += '<button class="btn small jl2-qact-btn" data-jl2q="' + jl2_esc(id) +
+                '" data-jl2a="' + jl2_esc(at) + '" data-jl2s="' + jl2_esc(sidAlt) + '">' +
+                jl2_esc(altNames[at] || at) + '</button>';
+            }
+            continue;
+          }
+
+          // 抉择阶段：渲染 stage.desc 与每个 choice 按钮
+          if (st && st.type === 'choice' && !a.ready) {
+            var sid = st.id || ('s' + a.stage);
+            html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + '：' + jl2_esc(st.desc || '') + '</div>';
+            var choices = st.choices || [];
+            for (var c = 0; c < choices.length; c++) {
+              var ch = choices[c] || {};
+              var label = ch.text || ch.label || ch.id || ch.key || ('选项 ' + (c + 1));
+              html += '<button class="btn small jl2-qact-btn" data-jl2q="' + jl2_esc(id) +
+                '" data-jl2c="' + c + '" data-jl2s="' + jl2_esc(sid) + '">' + jl2_esc(label) + '</button>';
+            }
+            continue;
+          }
+
+          // 交付阶段：背包已备齐就给按钮，不再等 a.ready
+          // （旧版只认 a.ready，而 deliver 是交付时才扣物，导致按钮永远不出现）
+          var deliverReady = false;
+          if (st && st.type === 'deliver') {
+            deliverReady = jl2_countItem(st.item || st.what) >= (st.need || 1);
+          }
+          // 全部完成 / ready：交付按钮
+          if (a.ready || a.stage >= stages.length || deliverReady) {
+            var to = def.turnin || def.giver || '委托人';
+            html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + '：诸事已毕</div>';
+            html += '<button class="btn small jl2-qact-btn" data-jl2q="' + jl2_esc(id) +
+              '" data-jl2t="1">交付 · ' + jl2_esc(to) + '</button>';
+            continue;
+          }
+
+          // 无可操作：一行简明目标
+          var goal = (st && st.desc) || def.hook || def.desc || '';
+          html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + ' — ' + jl2_esc(goal) + '</div>';
+        }
+      }
+      if (container.innerHTML !== html) container.innerHTML = html;
+      jl2_bindQuestPanelActions(container);
+    } catch (e) { jl2_err('jl2_renderQuestPanelActions', e); }
+  }
+
   function jl2_questInit() {
     try {
       jl2_qlog();
@@ -1185,7 +1385,8 @@
     jl2_adaptLegacy: jl2_adaptLegacy,
     jl2_questTrackerText: jl2_questTrackerText,
     jl2_questChoose: jl2_questChoose,
-    jl2_questFail: jl2_questFail
+    jl2_questFail: jl2_questFail,
+    jl2_renderQuestPanelActions: jl2_renderQuestPanelActions
   };
   for (var key in API) if (Object.prototype.hasOwnProperty.call(API, key)) G[key] = API[key];
 

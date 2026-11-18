@@ -42,7 +42,7 @@
       dialogue: { accept: 'd_m1_01_accept', turnin: 'd_m1_01_turnin' },
       stages: [
         { id: 's1', type: 'reach', room: '泥瓶巷', desc: '去巷口看那具尸体', hint: '泥瓶巷' },
-        { id: 's2', type: 'talk', npc: '杨老头', topic: '认刀', desc: '请杨老头认那截断刀', hint: '杨老头在泥瓶巷' },
+        { id: 's2', type: 'talk', npc: '杨老头', desc: '请杨老头认那截断刀', hint: '杨老头在泥瓶巷' },
         { id: 's3', type: 'choice', desc: '死人的事，报官还是不报', choices: [
           { text: '报官，交衙门处置', effects: [{ aff: ['巡城武官', 10] }, { flag: 'jl2_ch1_tip_off' }], goto: 's4' },
           { text: '私了，先收好那半张药方', effects: [{ aff: ['杨老头', 8] }, { flag: 'jl2_ch1_cover_up' }, { item: '断刀' }], goto: 's4' },

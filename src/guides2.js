@@ -269,6 +269,23 @@ function jl2_guideStageHit(stage, type, p){
 }
 
 /* ── 公共 API ─────────────────────────────────────────── */
+function jl2_guideEnsureObserver(){
+  try{
+    if(JL2_GUIDE_OBS) return true;
+    if(typeof MutationObserver !== 'function' || typeof document === 'undefined') return false;
+    var target = document.getElementById('s-quest');
+    if(!target) return false;
+    JL2_GUIDE_OBS = new MutationObserver(function(){
+      if(JL2_GUIDE_BAR_WRITING) return;
+      var st = jl2_guideState(false);
+      if(st && !st.done && !st.skipped) jl2_guideBar();
+      else if(st) jl2_guideReleaseBar();
+    });
+    JL2_GUIDE_OBS.observe(target, {childList:true, subtree:true, characterData:true});
+    return true;
+  }catch(e){ jl2_guideErr('ensureObserver: '+e.message); return false; }
+}
+
 function jl2_guideStart(originId){
   try{
     var id = jl2_guideInferOrigin(originId);
@@ -284,6 +301,7 @@ function jl2_guideStart(originId){
     st.done = false;
     st.startedAt = (typeof game !== 'undefined' && game && game.turns) || 0;
     st.lastSig = '';
+    jl2_guideEnsureObserver(); // 二次开局时观察器可能已被 release 断开
     jl2_guideLog(g.monologue, 'sys');
     jl2_guideBar();
     return st;
@@ -337,6 +355,17 @@ function jl2_guideOnEvent(type, p){
 }
 
 var JL2_GUIDE_BAR_WRITING = false;
+var JL2_GUIDE_OBS = null;
+var JL2_GUIDE_RELEASING = false;
+function jl2_guideReleaseBar(){
+  if(JL2_GUIDE_RELEASING) return;
+  JL2_GUIDE_RELEASING = true;
+  try{
+    if(JL2_GUIDE_OBS){ JL2_GUIDE_OBS.disconnect(); JL2_GUIDE_OBS = null; }
+    if(typeof updateQuestTracker === 'function') updateQuestTracker();
+  }catch(e){ jl2_guideErr('release: '+e.message); }
+  finally{ JL2_GUIDE_RELEASING = false; }
+}
 function jl2_guideBar(){
   try{
     var st = jl2_guideState(true);
@@ -376,8 +405,13 @@ function jl2_guideBar(){
            + '　<span id="jl2-guide-skip" style="color:#a5d9ad;cursor:pointer;">［跳过引导］</span></div>';
     }
 
+    // 引导结束后把目标条还给任务系统，别让「引导完成」长期占着追踪栏。
+    if((st.done || st.skipped) && !usingLog){ jl2_guideReleaseBar(); return; }
+
     // 同一内容不重写：MutationObserver 盯着这个元素，重复写入会自旋把页面卡死。
-    if(!usingLog && el.getAttribute('data-jl2-guide') === plain) return;
+    // 但 updateQuestTracker 会把 innerHTML 覆盖回去（属性还在、内容已变），
+    // 所以必须同时比对真实 DOM，否则引导会被旧任务条永久遮住。
+    if(!usingLog && el.getAttribute('data-jl2-guide') === plain && el.innerHTML === (el.getAttribute('data-jl2-guide-html') || '')) return;
     JL2_GUIDE_BAR_WRITING = true;
     try{
       if(usingLog){
@@ -389,6 +423,7 @@ function jl2_guideBar(){
         el.appendChild(d);
       } else {
         el.setAttribute('data-jl2-guide', plain);
+        el.setAttribute('data-jl2-guide-html', html);
         el.innerHTML = html;
         var skip = document.getElementById('jl2-guide-skip');
         if(skip) skip.addEventListener('click', function(){ jl2_guideSkip(); });
@@ -404,16 +439,6 @@ function jl2_guideInit(){
       jl2_on('*', function(type, p){ jl2_guideOnEvent(type, p); });
     }
     // updateQuestTracker 会覆写 #s-quest；引导期间用观察器把目标条贴回去。
-    if(typeof MutationObserver === 'function' && typeof document !== 'undefined'){
-      var target = document.getElementById('s-quest');
-      if(target){
-        var ob = new MutationObserver(function(){
-          if(JL2_GUIDE_BAR_WRITING) return;
-          var st = jl2_guideState(false);
-          if(st && !st.done && !st.skipped) jl2_guideBar();
-        });
-        ob.observe(target, {childList:true, subtree:true, characterData:true});
-      }
-    }
+    jl2_guideEnsureObserver();
   }catch(e){ jl2_guideErr('init: '+e.message); }
 }

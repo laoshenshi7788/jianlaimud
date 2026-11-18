@@ -240,6 +240,8 @@ function jl2_fallbackReward(r) {
 /* 单条 effect -> 中文摘要；所有状态写回 game.flags / game.world / player */
 function jl2_applyEffectOne(eff) {
   if (eff == null) return '';
+  if (!game.world) game.world = {};
+  if (!game.world.flags) game.world.flags = {};
   if (typeof eff === 'string') { game.flags[eff] = true; return '（记下 ' + eff + '）'; }
   var s = '';
 
@@ -284,6 +286,44 @@ function jl2_applyEffectOne(eff) {
       s += '（世情已记）　';
     } else { game.flags[eff.flag] = true; s += '（记下 ' + eff.flag + '）　'; }
   }
+  // —— 世界后果：章节选择必须真的改变房间、商店、江湖传闻 ——
+  if (eff.worldFlag != null) {
+    var wf = eff.worldFlag;
+    var wk, wv;
+    if (Array.isArray(wf)) { wk = wf[0]; wv = wf.length > 1 ? wf[1] : true; }
+    else if (typeof wf === 'object') { for (var wkk in wf) { if (Object.prototype.hasOwnProperty.call(wf, wkk)) { game.world.flags[wkk] = wf[wkk]; } } s += '（世道有变）　'; wk = null; }
+    else { wk = String(wf); wv = true; }
+    if (wk) game.world.flags[wk] = wv;
+    if (Array.isArray(wf)) s += '（世道：' + wk + '→' + wv + '）　';
+  }
+  if (eff.roomFlag != null) {
+    var rf = Array.isArray(eff.roomFlag) ? eff.roomFlag : [eff.roomFlag, 'changed', true];
+    var rn = rf[0], rk = rf[1] || 'changed', rv = rf.length > 2 ? rf[2] : true;
+    if (!game.world.rooms) game.world.rooms = {};
+    if (!game.world.rooms[rn]) game.world.rooms[rn] = {};
+    if (!game.world.rooms[rn].flags) game.world.rooms[rn].flags = {};
+    game.world.rooms[rn].flags[rk] = rv;
+    s += '（' + rn + '气象已变）　';
+  }
+  if (eff.shopStock != null) {
+    var sf = Array.isArray(eff.shopStock) ? eff.shopStock : [eff.shopStock, '?', 1];
+    var shop = sf[0], item = sf[1], delta = Number(sf[2]) || 1;
+    if (!game.world.shopStock) game.world.shopStock = {};
+    if (!game.world.shopStock[shop]) game.world.shopStock[shop] = {};
+    game.world.shopStock[shop][item] = (game.world.shopStock[shop][item] || 0) + delta;
+    s += '（' + shop + '货架：' + item + (delta > 0 ? '+' : '') + delta + '）　';
+  }
+  if (eff.respect != null || eff.debt != null) {
+    var who = eff.npc || (Array.isArray(eff.respect) ? eff.respect[0] : (Array.isArray(eff.debt) ? eff.debt[0] : ''));
+    var rv2 = eff.respect != null ? (Array.isArray(eff.respect) ? eff.respect[1] : eff.respect) : 0;
+    var dv = eff.debt != null ? (Array.isArray(eff.debt) ? eff.debt[1] : eff.debt) : 0;
+    who = who || eff.who || '';
+    if (who && typeof jl2_relAdd === 'function') {
+      if (rv2) jl2_relAdd(who, 'respect', Number(rv2) || 0);
+      if (dv) jl2_relAdd(who, 'debt', Number(dv) || 0);
+      s += who + (rv2 ? '敬重' + (rv2 > 0 ? '+' : '') + rv2 : '') + (dv ? '人情' + (dv > 0 ? '+' : '') + dv : '') + '　';
+    }
+  }
   if (eff.quest != null) {
     var qid = typeof eff.quest === 'object' ? (eff.quest.id || eff.quest.name) : eff.quest;
     game.flags['quest_' + qid] = true;
@@ -304,6 +344,41 @@ function jl2_applyEffectOne(eff) {
     game.flags['declined_' + did] = true;
     try { if (typeof jl2_emit === 'function') jl2_emit('decline', { id: did }); } catch (_) {}
     s += '（谢绝 ' + did + '）　';
+  }
+  // 主线交付 / 抉择 / 分支：转发给 quest2 引擎（questTurnIn 内部已刷新面板）
+  if (eff.turnin != null) {
+    var tids = Array.isArray(eff.turnin) ? eff.turnin : [eff.turnin];
+    for (var ti = 0; ti < tids.length; ti++) {
+      var tid = tids[ti];
+      if (!tid) continue;
+      if (typeof jl2_questTurnIn === 'function') {
+        try { jl2_questTurnIn(tid); } catch (e) { jl2_dlgErr('turnin', e); }
+      }
+    }
+    s += '（交付 ' + tids.join('、') + '）　';
+  }
+  if (eff.choose != null) {
+    var qid2 = null, ck = null, cst = null;
+    if (Array.isArray(eff.choose)) { qid2 = eff.choose[0]; ck = eff.choose[1]; cst = eff.choose[2]; }
+    else if (typeof eff.choose === 'object') {
+      qid2 = eff.choose.id || eff.choose.quest;
+      ck = eff.choose.key;
+      cst = eff.choose.stage || eff.choose.stageId;
+    }
+    if (qid2 && typeof jl2_questChoose === 'function') {
+      try { jl2_questChoose(qid2, ck, cst); } catch (e) { jl2_dlgErr('choose', e); }
+      s += '（抉择 ' + qid2 + '）　';
+    }
+  }
+  if (eff.branch != null) {
+    var bqid = eff.quest || eff.id ||
+      (typeof eff.branch === 'object' ? (eff.branch.id || eff.branch.quest || eff.branch.qid) : null);
+    var bk = (typeof eff.branch === 'object' ? (eff.branch.key || eff.branch.branch || eff.branch.value) : eff.branch);
+    var bst = (typeof eff.branch === 'object' ? (eff.branch.stage || eff.branch.stageId) : null);
+    if (bqid && bk != null && typeof jl2_questChoose === 'function') {
+      try { jl2_questChoose(bqid, bk, bst); } catch (e) { jl2_dlgErr('branch', e); }
+      s += '（择 ' + bk + '）　';
+    }
   }
   if (eff.knowledge != null) {
     var ks = Array.isArray(eff.knowledge) ? eff.knowledge : [eff.knowledge];

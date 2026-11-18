@@ -5,7 +5,7 @@ const path = require('path');
 const BASE = path.resolve(__dirname, '..');
 const P = path.join(BASE, 'index.html');
 const SRC = path.join(BASE, 'src');
-const FILES = ['quest2.js', 'progression2.js', 'combat2.js', 'materials2.js', 'dialogue2.js', 'social2.js', 'guides2.js', 'text2.js', 'content2.js', '_boot.js'];
+const FILES = ['quest2.js', 'progression2.js', 'combat2.js', 'materials2.js', 'dialogue2.js', 'social2.js', 'guides2.js', 'text2.js', 'content2.js', 'loops2.js', 'asks2.js', '_boot.js'];
 
 const missing = FILES.filter(function(f){ return !fs.existsSync(path.join(SRC, f)); });
 if (missing.length) { console.error('缺少模块：' + missing.join(', ')); process.exit(1); }

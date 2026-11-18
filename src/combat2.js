@@ -214,7 +214,7 @@
         try {
           var s = state();
           if (!s) return;
-          s.lastBattleEnd = { enemy: p && (p.enemy || p.name) || '', win: !!(p && p.win), at: num(getGame() && getGame().turn, 0) };
+          s.lastBattleEnd = { enemy: p && (p.enemy || p.name) || '', win: !!(p && p.win), at: num(getGame() && getGame().turns, 0) };
         } catch (e) { err('on.battle_end', e); }
       });
       return { ok: true };
@@ -418,7 +418,7 @@
           var h = s.history[name];
           if (win) h.wins = num(h.wins, 0) + 1;
           else h.losses = num(h.losses, 0) + 1;
-          h.lastAt = num(getGame() && getGame().turn, 0);
+          h.lastAt = num(getGame() && getGame().turns, 0);
         }
         // 战斗结束：清掉本场的连招、重复、蓄势与架势，破绽回合计数归零。
         s.chain = []; s.lastMove = null; s.repeat = 0; s.charge = 0;
@@ -438,11 +438,67 @@
     }
   }
 
+  /* ── 战斗效果落地：把 effects 安全写入 battle，产出中文 notes ──── */
+  function jl2_applyCombatEffects(effects, ctx) {
+    var notes = [];
+    if (!Array.isArray(effects)) return notes;
+    try {
+      var bt = (typeof battle !== 'undefined') ? battle
+             : (typeof G !== 'undefined' ? G.battle : null);
+      if (!isObj(bt)) return notes;
+      for (var i = 0; i < effects.length; i++) {
+        var e = effects[i];
+        if (!isObj(e)) continue;
+        var v = num(e.value, 0);
+        var t = Math.max(1, num(e.turns, 1));
+        switch (e.type) {
+          case 'shield':
+            bt.jl2Shield = (bt.jl2Shield || 0) + v;
+            notes.push('护体真气凝成，下回合先挡下 ' + v + ' 点伤害。');
+            break;
+          case 'dodge':
+            bt.jl2Dodge = Math.max(bt.jl2Dodge || 0, v);
+            notes.push('身法飘忽，下回合闪避提升至 ' + Math.round(v * 100) + '%。');
+            break;
+          case 'armorBreak':
+            bt.jl2ArmorBreak = { value: v, turns: t };
+            notes.push('破甲得手，接下来 ' + t + ' 回合攻击附带 ' + v + ' 点额外伤害。');
+            break;
+          case 'bleed':
+            bt.jl2Bleed = { value: v, turns: t };
+            notes.push('对方流血不止，接下来 ' + t + ' 回合每回合损失 ' + v + ' 点气血。');
+            break;
+          case 'stun':
+            bt.jl2Stun = (bt.jl2Stun || 0) + 1;
+            notes.push('对方被定住，下回合无法出手。');
+            break;
+          default:
+            break;
+        }
+      }
+    } catch (e2) { err('applyCombatEffects', e2); }
+    return notes;
+  }
+
+  /* ── 破绽倒计时：按回合数推算距下次破绽的回合，供按钮条显示 ────── */
+  function jl2_breakState(round) {
+    var r = num(round, 0);
+    var m = ((r % 3) + 3) % 3;
+    var isBreak = (m === 0);
+    var remaining = isBreak ? 0 : (3 - m);
+    var hint = isBreak
+      ? '本回合正是破绽，速用“寻隙”一击重创敌势！'
+      : '再过 ' + remaining + ' 回合，敌方将露破绽，宜先蓄势待机。';
+    return { remaining: remaining, isBreak: isBreak, hint: hint };
+  }
+
   /* ── 导出：仅 jl2_ 前缀 + 只读数据表 ───────────────────────────── */
   G.jl2_combatInit = jl2_combatInit;
   G.jl2_combatPrepare = jl2_combatPrepare;
   G.jl2_combatDamageMod = jl2_combatDamageMod;
   G.jl2_combatAfter = jl2_combatAfter;
   G.jl2_combatText = jl2_combatText;
+  G.jl2_applyCombatEffects = jl2_applyCombatEffects;
+  G.jl2_breakState = jl2_breakState;
   G.JL2_COMBAT_STANCES = STANCES;
 })();

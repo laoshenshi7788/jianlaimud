@@ -10,12 +10,13 @@ function jl2_boot(){
     ['materials',  function(){ if(typeof jl2_materialsInit==='function') jl2_materialsInit(); }],
     ['dialogue',   function(){ if(typeof jl2_dialogueInit==='function') jl2_dialogueInit(); }],
     ['social',     function(){ if(typeof jl2_socialInit==='function') jl2_socialInit(); }],
-    ['guide',      function(){ if(typeof jl2_guideInit==='function') jl2_guideInit(); }]
+    ['guide',      function(){ if(typeof jl2_guideInit==='function') jl2_guideInit(); }],
+    ['loops',      function(){ if(typeof jl2_loopsInit==='function') jl2_loopsInit(); }],
+    ['asks',       function(){ if(typeof jl2_asksInit==='function') jl2_asksInit(); }]
   ];
   steps.forEach(function(step){
     try{ step[1](); }
     catch(e){
-      console.log('JL2-FAIL:' + step[0] + ':' + (e&&e.message));
       try{ window.__bootErrs && window.__bootErrs.push('jl2_boot['+step[0]+']: '+(e&&e.message)); }catch(e2){}
     }
   });

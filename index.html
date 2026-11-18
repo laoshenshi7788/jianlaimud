@@ -685,6 +685,7 @@ body{font-size:15px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:g
         </div>
       </div>
       <div id="s-quest"></div>
+      <div id="jl2-quest-actions" style="margin-top:6px;"></div>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="panel-sec">
         <div class="sec-t">武 功</div>
@@ -714,6 +715,7 @@ body{font-size:15px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:g
         <button class="btn danger" id="btn-hunts">追杀令</button>
         <button class="btn blue" id="btn-codex" title="图鉴：敌人/NPC/足迹/收集">图鉴</button>
         <button class="btn" id="btn-dibao">邸报</button>
+        <button class="btn" id="btn-jobs" title="行当：20 环日常，第 20 环有大赏">行 当</button>
         <button class="btn" id="btn-rels">关系</button>
         <button class="btn" id="btn-social2" title="三维关系 · 送礼 · 回礼 · 托付">交 情</button>
         <div class="nav-cat">—— 修 行 成 长 ——</div>
@@ -5255,7 +5257,10 @@ function calcAtk(){
   let a=player.atk;
   ['weapon','offhand','accessory','armor','head','hands','waist','feet','artifact'].forEach(function(slot){
     const it=player.equipment[slot]?itemData(player.equipment[slot]):null;
-    if(it&&it.atkBonus) a+=it.atkBonus;
+    // JL2：品质/强化后的派生属性才进战力；旧 ITEMS 原始值作为兜底
+    let bonus=0;
+    try{ const d=jl2_itemData(player.equipment[slot]); if(d&&d.atkBonus) bonus=d.atkBonus; }catch(e){}
+    if(bonus) a+=bonus; else if(it&&it.atkBonus) a+=it.atkBonus;
   });
   a+=equipBonus().atk; // 套装攻击加成
   a+=originBonus().atk;
@@ -5267,7 +5272,9 @@ function calcDef(){
   let d=player.def;
   ['armor','offhand','accessory','weapon','head','hands','waist','feet','artifact'].forEach(function(slot){
     const it=player.equipment[slot]?itemData(player.equipment[slot]):null;
-    if(it&&it.defBonus) d+=it.defBonus;
+    let bonus=0;
+    try{ const d2=jl2_itemData(player.equipment[slot]); if(d2&&d2.defBonus) bonus=d2.defBonus; }catch(e){}
+    if(bonus) d+=bonus; else if(it&&it.defBonus) d+=it.defBonus;
   });
   d+=equipBonus().def; // 套装防御加成
   d+=daoBonus().def;
@@ -7311,6 +7318,7 @@ function moveTo(rn, silent){
   look();
   renderMap();
   checkRoomEvents();
+  try{ if(typeof jl2_checkEncounters==='function') jl2_checkEncounters(); }catch(e){}
   if(!silent){ randomEncounter(); tradeCargoRisk(); } // 突发奇遇 / 行商劫掠
   // 进入触发战斗（房间级：如福地最深处、妖族祭坛）
   if(!silent && _tr && _tr.enterBattle && !game.roomCleared[rn]){
@@ -7955,6 +7963,7 @@ function talkTo(npcName){
   if(npc.boss) acts.push({t:'挑战', cls:'danger', fn:()=>startFight(npcName)});
   if(!npc.boss){
     acts.push({t:'赠礼', cls:'love', fn:()=>openGiftPicker(npcName)});
+    acts.push({t:'问 话', cls:'blue', fn:()=>{ try{ jl2_openAskPanel(npcName); }catch(e){ log('（一时无话可问：'+(e&&e.message)+'）','sys'); } }});
     acts.push({t:'谈天论道', cls:'', fn:()=>openChatTopics(npcName)});
     acts.push({t:'端详打量', cls:'', fn:()=>inspectNpc(npcName)});
     const gr=game.grudgeList.find(function(g){ return g.avenger===npcName && !game.npcDead[g.victim] && g.readyTurn==null && !game.npcDead[npcName]; });
@@ -7974,6 +7983,17 @@ function talkTo(npcName){
   }
   const activeQ=game.quests.find(q=>q.turnin===npcName);
   if(activeQ && questReady(activeQ)) acts.push({t:'交付任务', cls:'quest', fn:()=>turnInQuest(activeQ.id)});
+  // JL2 任务：不经过旧 questReady，直接在 NPC 面板交付
+  try{
+    if(game.qlog&&game.qlog.active){
+      Object.keys(game.qlog.active).forEach(function(qid){
+        const qd=QUESTS[qid];
+        if(qd&&(qd.turnin===npcName||qd.giver===npcName)){
+          acts.push({t:'交付 · '+(qd.title||qid), cls:'quest', fn:()=>{ try{ jl2_questTurnIn(qid); }catch(e){ log('（交付出了岔子：'+(e&&e.message)+'）','sys'); } }});
+        }
+      });
+    }
+  }catch(e){}
   // 文戏：与关键人物促膝长谈（多幕、多选择、多后果）
   if(DRAMA[npcName]){
     const dk=Object.keys(DRAMA[npcName]).filter(function(k){
@@ -8043,6 +8063,14 @@ const GIFT_REACT={
   hate:{cold:'她/他的眼神倏地冷了下来，将礼物推了回来。', warm:'她/他脸上的笑意淡去，把东西轻轻搁回你手里。', hot:'她/他怔了怔，眼底划过一丝痛色，缓缓道：这物什……你留着罢。'}
 };
 function giveGift(npcName, item){
+  // JL2 送礼：评分/回礼/传闻/后续事件走新引擎；旧公式仅作兜底
+  try{
+    if(typeof jl2_gift==='function'){
+      const _gr=jl2_gift(npcName,item,{source:'panel'});
+      if(_gr && _gr.ok!==false) return _gr;
+      if(_gr && (_gr.reason==='no_item'||_gr.reason==='no_npc')) return _gr;
+    }
+  }catch(e){}
   game.flags=game.flags||{}; game.flags.giftOnce=true; // 新手引导：送过礼
   const npc=getNpc(npcName); if(!npc) return;
   if(game.giftTick>0){
@@ -9228,23 +9256,30 @@ function finishQuest(id, bonus){
   const market=1+Math.max(0,(player.level-1))*0.06;
   const exp=Math.round((r.exp||0)*(bonus.expMul||1)*market);
   const gold=Math.round((r.gold||0)*(bonus.goldMul||1)*market);
+  const fq=(bonus.fame!==undefined)?bonus.fame:5;
   q.done=true; q.failed=false;
   game.questDone[id]=true;
-  player.exp+=exp; player.gold+=gold;
-  const fq=(bonus.fame!==undefined)?bonus.fame:5;
-  game.fame+=fq;
-  logQuest('—— '+(questCatOf(id)==='主线'?'主线':questCatOf(id))+'完成：「'+q.title+'」！获得经验 +'+exp+'，银两 +'+gold+'。——');
-  finishQuest_ext(r||{}); // 潜能（独立系统）/门派贡奉/侠名
+  logQuest('—— '+(questCatOf(id)==='主线'?'主线':questCatOf(id))+'完成：「'+q.title+'」！——');
+  // 统一奖励出口：经验/银两/侠名/物品/功法/好感全部走 jl2_reward，
+  // 潜能与门派贡奉仍走旧专项系统（addPotential 有独立上限与日志）。
+  try{
+    const items=[];
+    if(r.item && !bonus.noItem) items.push({name:(typeof r.item==='string'?r.item:(r.item.name||'')), n:(r.item.n||1)});
+    if(Array.isArray(r.items) && !bonus.noItem) r.items.forEach(function(it){ items.push({name:(it&&it.name)||it, n:(it&&it.n)||1}); });
+    if(bonus.item) items.push({name:bonus.item, n:1});
+    const affObj=(bonus.aff && bonus.affNpc)?{[bonus.affNpc]:bonus.aff}:undefined;
+    const rw={exp:exp, gold:gold, fame:fq, items:items, skill:bonus.skill||r.skill, aff:affObj};
+    if(typeof jl2_reward==='function') jl2_reward(rw,{source:'legacy_quest',quest:id});
+    else {
+      player.exp+=exp; player.gold+=gold; game.fame+=fq;
+      items.forEach(function(it){ for(let i=0;i<it.n;i++) addItem(it.name); });
+      if(rw.skill) learnSkill(rw.skill);
+    }
+  }catch(e){ log('（奖励结算出了岔子：'+(e&&e.message)+'）','sys'); }
+  finishQuest_ext({potential:r.potential, favor:r.favor}); // 潜能/门派贡奉的旧专项处理
   if(q.daily){ game.dailyDone=game.dailyDone||{}; game.dailyDone[dayKey()+'|'+id]=true; } // 日常：当日不再上架
   // 日常/主线完成的委托即刻退场（主线进度记档；日常明日再来）
   if(q.daily || questCatOf(id)==='主线'){ game.quests=game.quests.filter(function(x){ return x.id!==id; }); }
-  if(r.item && !bonus.noItem){ addItem(r.item); logItem('（获得奖励：'+itemLabel(r.item)+'）'); }
-  if(r.items && r.items.length && !bonus.noItem){ r.items.forEach(function(it){ addItem(it); logItem('（获得奖励：'+itemLabel(it)+'）'); }); }
-  if(bonus.item){ addItem(bonus.item); logItem('（额外谢礼：'+bonus.item+'）'); }
-  // 特殊：奖励功法
-  if(r.skill){ if(learnSkill(r.skill)) logSkill('你参悟了【'+r.skill+'】！'); }
-  if(bonus.skill && learnSkill(bonus.skill)) logSkill('你参悟了【'+bonus.skill+'】！');
-  if(bonus.aff && bonus.affNpc){ const gA=affGain(bonus.affNpc, bonus.aff); logLove('（'+bonus.affNpc+' 好感 +'+gA+'。）'); }
   // 长支线「骊珠旧事」：环环相扣，交付后递进下一环（除狼→故人→问罪→书院→剑条→王座→长城→托月山）
   if(/^lz\d$/.test(id)){
     const LZ_NUM=['一','二','三','四','五','六','七','终'];
@@ -10747,7 +10782,9 @@ function renderBattleOverlay(){
   // 回合牌：一动一还，方为一个回合
   const tag=document.createElement('span');
   tag.style.cssText='color:#c9b98a;font-size:.78em;letter-spacing:2px;align-self:center;white-space:nowrap;';
-  tag.textContent='第'+(battle.round||1)+'回合';
+  let _bt='第'+(battle.round||1)+'回合';
+  try{ const _bs=jl2_breakState(battle.round||1); _bt+=_bs.isBreak?' · 破绽！':' · 破绽'+_bs.remaining+'回合'; }catch(e){}
+  tag.textContent=_bt;
   eb.appendChild(tag);
   function mk(label, cls, fn){
     const b=document.createElement('button');
@@ -10766,7 +10803,11 @@ function renderBattleOverlay(){
   });
   mk('寻 隙','primary',function(){
     if(!battle) return;
-    battle.jl2Seek=true; battleLog('（你凝神盯着对手的破绽，下一击寻隙而入。）','skill');
+    try{
+      const _bs=jl2_breakState(battle.round||1);
+      if(!_bs.isBreak){ battleLog('（敌方尚未露出破绽——再等 '+_bs.remaining+' 回合。）','sys'); return; }
+    }catch(e){}
+    battle.jl2Seek=true; battleLog('（破绽就在眼前——下一击寻隙而入！）','skill');
     renderBattleOverlay();
   });
   mk('攻 击','danger',function(){ playerAttack(null); });
@@ -10819,7 +10860,15 @@ function openBattleItemPick(){
 function playerAttack(skillName){
   if(!battle) return;
   let dmg=calcAtk();
-  try{ const _cm=jl2_combatDamageMod({attacker:'player',defender:battle.name,skill:skillName||'',stance:(battle.jl2Stance||'balanced'),break:!!battle.jl2Seek,seekGap:!!battle.jl2Seek,turn:game.turns}); if(_cm&&_cm.mul!==1){ dmg=Math.max(1,Math.floor(dmg*_cm.mul)); if(_cm.note) battleLog(_cm.note,'skill'); } }catch(e){}
+  try{
+    const _bs=jl2_breakState(battle.round||1), _seek=!!battle.jl2Seek;
+    const _cm=jl2_combatDamageMod({attacker:'player',defender:battle.name,skill:skillName||'',stance:(battle.jl2Stance||'balanced'),break:(_bs.isBreak||_seek),seekGap:_seek,turn:(battle.round||1)});
+    if(_cm&&_cm.mul!==1){ dmg=Math.max(1,Math.floor(dmg*_cm.mul)); if(_cm.note) battleLog(_cm.note,'skill'); }
+    const _cn=jl2_applyCombatEffects((_cm&&_cm.effects)||[],{round:battle.round||1});
+    if(_cn&&_cn.length) _cn.forEach(function(x){ battleLog('（'+x+'）','skill'); });
+    if(battle.jl2ArmorBreak){ dmg+=battle.jl2ArmorBreak.value||0; battle.jl2ArmorBreak.turns--; if(battle.jl2ArmorBreak.turns<=0) delete battle.jl2ArmorBreak; }
+    if(_seek){ battle.jl2Seek=false; battleLog('（寻隙已用，破绽转瞬即逝。）','sys'); }
+  }catch(e){}
   let line='你挥拳而出！', cls='combat';
   if(skillName){
     if(!hasSkill(skillName)){ battleLog('（未习得此功）','sys'); return; }
@@ -10828,6 +10877,7 @@ function playerAttack(skillName){
     if(player.mp<sd.mpCost){ battleLog('（内力不足）','sys'); return; }
     player.mp-=sd.mpCost;
     dmg+=sd.damage;
+    try{ const _ag0=jl2_equipAggregate(); if(_ag0&&_ag0.spell) dmg=Math.floor(dmg*(1+_ag0.spell/100)); }catch(e){}
     line='你施展【'+skillName+'】！';
     cls='skill';
     if(sd.element && battle.env.ele[sd.element]){
@@ -10841,6 +10891,7 @@ function playerAttack(skillName){
     player.skillExp[skillName]=(player.skillExp[skillName]||0)+1;
     const nTier=masteryTier(skillName);
     if(nTier>prevTier){ battleLog('（这一式「'+skillName+'」已入'+MASTERY_STEPS[nTier][0]+'之境——威力更进一筹！）','skill'); }
+    try{ const _mg=jl2_masteryGain(skillName,1); if(_mg&&_mg.ok&&_mg.bottleneck) battleLog('（「'+skillName+'」已至瓶颈，可在修炼中顿悟。）','sys'); }catch(e){}
     dmg=Math.floor(dmg*masteryMul(skillName));
   }
   if(battle.spyTip){ // 探子先机：首击快人一步
@@ -10888,6 +10939,7 @@ function playerAttack(skillName){
   let applied=Math.max(1, Math.floor(power*(1-clampRatio(red,0,0.8))));
   // 自创功法的路数效果（惊鸿会心 / 守拙护体 / 饮月回蓝 / 斩风先手）
   let critCh=critRate();
+  try{ const _ag=jl2_equipAggregate(); critCh+=(_ag.crit||0)/100; red=Math.max(0,red-(_ag.pierce||0)/100); }catch(e){}
   if(WC && WC.crit) critCh+=WC.crit/100; // 匕首高会心/弓带会心
   const _crTr=skillName?(SKILLS[skillName]&&SKILLS[skillName].trait)||null:null;
   if(_crTr==='crit'){ critCh+=0.15; battleLog('（惊鸿之势——剑走轻灵，直取破绽！）','skill'); }
@@ -10908,6 +10960,7 @@ function playerAttack(skillName){
   const v=Math.floor(Math.random()*(FORMULAS.dmgVariance*2+1))-FORMULAS.dmgVariance;
   const out=Math.max(1, applied+v);
   battle.hp-=out;
+  try{ const _ag=jl2_equipAggregate(); if(_ag.lifesteal>0){ const _heal=Math.max(1,Math.floor(out*_ag.lifesteal/100)); const _before=player.hp; player.hp=Math.min(effMaxHp(),player.hp+_heal); if(player.hp>_before) battleLog('（吸血：气血 +'+(player.hp-_before)+'。）','skill'); } }catch(e){}
   // —— 伤害即修炼（LPmud 惯例）：打出的每一分伤害都化作修为，不受气府容量所限 ——
   const dmgExp=Math.max(1, Math.floor(out*0.3));
   player.exp+=dmgExp;
@@ -10937,6 +10990,19 @@ function enemyTurn(){
   if(!battle || battle.hp<=0) return;
   battle.enemyActed=true; // 敌方已出手（斩风先手判定用）
   battle.round=(battle.round||1)+1; // 回合推进：一动一还，方为一个回合
+  // JL2 流血/眩晕：由装备词条与招式效果产生
+  try{
+    if(battle.jl2Bleed && battle.hp>0){
+      const _bl=battle.jl2Bleed; battle.hp-=Math.max(1,_bl.value||0);
+      battleLog('（流血：'+battle.name+' 气血 -'+(_bl.value||0)+'。）','skill');
+      _bl.turns--; if(_bl.turns<=0) delete battle.jl2Bleed;
+      if(battle.hp<=0){ onEnemyDefeated(); return; }
+    }
+    if(battle.jl2Stun>0){
+      battle.jl2Stun--; battleLog('（'+battle.name+' 被定住，这一回合无法出手！）','skill');
+      updateSidebar(); renderBattleOverlay(); return;
+    }
+  }catch(e){}
   if(battle.env.mpRegen>0 && player.mp<effMaxMp()){
     const reg=Math.min(battle.env.mpRegen, effMaxMp()-player.mp);
     player.mp+=reg;
@@ -10960,7 +11026,16 @@ function enemyTurn(){
   let red=dmgReduction();
   if(battle.myGuard){ red+=FORMULAS.guardSoften; battle.myGuard=false; }
   red=Math.min(0.85, red);
+  try{ const _ag=jl2_equipAggregate(); if(_ag&&_ag.dr) red=Math.min(0.85,red+_ag.dr/100); }catch(e){}
   let edmg=Math.max(1, Math.floor(power*(1-red)));
+  if(battle.jl2Dodge>0 && Math.random()<battle.jl2Dodge){
+    battleLog('（身法轻盈，你闪开了这一击！）','skill'); battle.jl2Dodge=0;
+    updateSidebar(); renderBattleOverlay(); return;
+  }
+  if(battle.jl2Shield>0){
+    const _blocked=Math.min(edmg-1,battle.jl2Shield); edmg=Math.max(1,edmg-_blocked); battle.jl2Shield=0;
+    if(_blocked>0) battleLog('（护体真气挡下 '+_blocked+' 点伤害。）','skill');
+  }
   let ecrit=false;
   if(Math.random()<enemyCritRate(battle.lvl)){
     ecrit=true;
@@ -11320,7 +11395,10 @@ function onEnemyDefeated(){
 }
 function logBoss(t){ logLine(t,'boss'); }
 function onPlayerDown(){
-  if(battle){ battleLog(flair('lose'),'sys'); }
+  if(battle){
+    battleLog(flair('lose'),'sys');
+    try{ const _ca=jl2_combatAfter(battle.name,false); if(_ca&&_ca.lines) _ca.lines.forEach(function(x){ battleLog(x,'info'); }); }catch(e){}
+  }
   if(battle && battle.pending && battle.pending.kind==='trope'){
     // 江湖偶遇之战败北：灰头土脸，不身死
     const tid=battle.pending.tropeId||'';
@@ -13454,6 +13532,30 @@ function doAppraise(name){
   }
   updateSidebar();
 }
+// JL2 配方加工：把采集→材料→加工→成品真正接起来
+function jl2_openForgeRecipes(){
+  const R=(typeof JL2_RECIPES!=='undefined')?JL2_RECIPES:null;
+  const h=document.createElement('div');
+  if(!R){ h.textContent='（配方尚未载入。）'; openModal('配方加工',()=>h); return; }
+  const tip=document.createElement('div'); tip.style.cssText='color:#c9c9cf;font-size:.72em;margin-bottom:8px;line-height:1.7;';
+  tip.textContent='（有料便能开炉。成功率随技艺、工具与材料品质变化；失败损失半料。）'; h.appendChild(tip);
+  Object.keys(R).forEach(function(kind){
+    const title=document.createElement('div'); title.style.cssText='color:#e8d8a0;font-size:.74em;letter-spacing:2px;margin:8px 0 4px;';
+    title.textContent='— '+kind+' —'; h.appendChild(title);
+    R[kind].forEach(function(rec){
+      const mats=Object.keys(rec.mats||{}).map(function(m){ return m+'×'+rec.mats[m]+(countItem(m)>0?'（余'+countItem(m)+'）':'（缺）'); }).join('、');
+      const row=document.createElement('div'); row.className='list-row';
+      row.innerHTML='<span class="lname">'+rec.name+'</span><span class="lmeta">'+mats+'　成功率约 '+Math.round((rec.rate||0.5)*100)+'%</span>';
+      const b=document.createElement('button'); b.className='btn small'; b.textContent='加工';
+      b.addEventListener('click',function(){
+        try{ const r=jl2_forge(kind,rec.mats,{}); if(r&&r.msg) log(r.msg, r.ok?'success':'sys'); }catch(e){ log('（加工出了岔子：'+(e&&e.message)+'）','sys'); }
+        updateSidebar(); jl2_openForgeRecipes();
+      });
+      row.appendChild(b); h.appendChild(row);
+    });
+  });
+  openModal('配方加工 · 采集变现',()=>h);
+}
 function openCraftPanel(){
   const h=document.createElement('div');
   h.style.cssText='font-size:.8em;color:#ffffff;';
@@ -13472,6 +13574,9 @@ function openCraftPanel(){
   mk('药炉','依方炼丹药，火候见真章','炼丹','green',openAlchemyPanel);
   mk('田圃','种灵药（需先置办田产）','种植','green',openGardenPanel);
   mk('鉴宝桌','拂尘辨器，一夜暴富或一无所获','鉴宝','primary',openAppraisePanel);
+  const recBtn=document.createElement('button'); recBtn.className='btn green'; recBtn.textContent='配方加工（材料→成品）'; recBtn.style.cssText='display:block;width:100%;margin-top:8px;';
+  recBtn.addEventListener('click',function(){ document.getElementById('overlay').classList.remove('show'); jl2_openForgeRecipes(); });
+  h.appendChild(recBtn);
   openModal('技艺 · 匠门', ()=>h);
 }
 
@@ -14228,6 +14333,8 @@ function advanceTime(h){
     dayTick();
   }
   glassThirty();
+  // JL2 奇遇：时间/天气/地点/好感满足条件时触发，给重复游玩一个理由
+  try{ if(typeof jl2_checkEncounters==='function') jl2_checkEncounters(); }catch(e){}
 }
 function dayTick(){
   tickBuffs();           // 增益到期自散
@@ -19238,6 +19345,23 @@ function marketStock(room){
       }
       stock.goods[tab.id]=list;
     });
+    // 世界后果：章节抉择会改变货架（报官→官府查禁青锋剑；私了→铁匠留货）
+    try{
+      const mods=(game.world&&game.world.shopStock)||{};
+      const price=Object.assign({},MARKET_WEAPONS,MARKET_ARMORS,MARKET_SKILLS,MARKET_TREASURES,MARKET_MATERIALS);
+      Object.keys(mods).forEach(function(shop){
+        const goods=mods[shop]||{};
+        Object.keys(goods).forEach(function(name){
+          const d=Number(goods[name])||0;
+          if(!d) return;
+          Object.keys(stock.goods).forEach(function(tab){
+            const list=stock.goods[tab];
+            if(d>0){ for(let i=0;i<d;i++) list.push({name:name,base:price[name]||100,kind:'real'}); }
+            else { for(let i=0;i<Math.abs(d);i++){ const ix=list.findIndex(function(g){ return g.name===name; }); if(ix>-1) list.splice(ix,1); } }
+          });
+        });
+      });
+    }catch(e){}
     game.marketStock=stock;
   }
   return game.marketStock;
@@ -20255,14 +20379,40 @@ function updateQuestTracker(){
   if(!el) return;
   let html='<div class="q-main">◈ '+chapterName()+'</div>';
   html+='<div class="q-sub">'+chapterGoal()+'</div>';
-  const act=(game.quests||[]).filter(q=>!q.failed&&!q.done);
-  if(act.length){
-    const first=act[0];
-    const ready=questReady(first);
-    html+='<div class="q-side">'+(ready?'<span class="done">✔ 可交付</span>':'▸ ')+first.title+' '+questProgressText(first)+(act.length>1?('　等 '+act.length+' 桩'):'')+'</div>';
-    html+='<div class="q-sub" style="opacity:.75;">↳ 交付：'+questGiverLoc(first.giver||first.turnin)+'</div>';
+  // JL2：最多同时追踪 3 条，带阶段进度与倒计时；旧任务仍作为兜底显示
+  let tracked=[];
+  try{
+    if(game.qlog&&game.qlog.active){
+      tracked=Object.keys(game.qlog.active).slice(0,3).map(function(id){
+        const txt=(typeof jl2_questTrackerText==='function')?jl2_questTrackerText(id):'';
+        const def=(typeof QUESTS!=='undefined'&&QUESTS[id])||null;
+        const a=game.qlog.active[id];
+        let dl='';
+        if(def&&def.fail&&def.fail.turns&&a&&a.startedAt!=null){
+          const left=def.fail.turns-(game.turns-(a.startedAt||0));
+          dl='　<span style="color:'+(left<=5?'#e88':'#c9b98a')+';">限 '+Math.max(0,left)+' 回合</span>';
+        }
+        return txt?('<div class="q-side">▸ '+txt+dl+'</div>'):'';
+      }).filter(Boolean);
+    }
+  }catch(e){}
+  if(tracked.length){ html+=tracked.join(''); }
+  else {
+    const act=(game.quests||[]).filter(q=>!q.failed&&!q.done);
+    if(act.length){
+      const first=act[0];
+      const ready=questReady(first);
+      html+='<div class="q-side">'+(ready?'<span class="done">✔ 可交付</span>':'▸ ')+first.title+' '+questProgressText(first)+(act.length>1?('　等 '+act.length+' 桩'):'')+'</div>';
+      html+='<div class="q-sub" style="opacity:.75;">↳ 交付：'+questGiverLoc(first.giver||first.turnin)+'</div>';
+    }
   }
   el.innerHTML=html;
+  // JL2：把当前 choice / 可交付任务渲染为真实按钮（不依赖旧 questReady）
+  try{ if(typeof jl2_renderQuestPanelActions==='function') jl2_renderQuestPanelActions(); }catch(e){}
+  try{ if(typeof jl2_jobTrackerText==='function'){
+    const jt=jl2_jobTrackerText();
+    if(jt){ const d=document.createElement('div'); d.className='q-side'; d.style.cssText='color:#b9d9b9;'; d.textContent='◈ '+jt; el.appendChild(d); }
+  }}catch(e){}
 }
 function updateSidebar(){
   // —— 任务追踪：主线目标 + 支线进度，一眼在望 ——
@@ -21243,6 +21393,8 @@ function applyStartup(bgId){
     }
   }catch(e){}
   try{ saveGame(); }catch(e){}
+  // JL2：主菜单二次开局也要重启分出身引导（freshGame 会抹掉 game.guide）
+  try{ if(typeof jl2_guideStart==='function') jl2_guideStart(bgId); }catch(e){}
   updateSidebar();
   enterWorld(true); // 新档：进入江湖（含 look/renderMap/时钟/自动存档；抑制"已读取存档"提示）
 }
@@ -23169,6 +23321,7 @@ function init(){
   document.getElementById('btn-escort').addEventListener('click',openEscortHall);
   document.getElementById('btn-repute').addEventListener('click',openReputePanel);
   document.getElementById('btn-dibao').addEventListener('click',openDibao);
+  const _bj=document.getElementById('btn-jobs'); if(_bj) _bj.addEventListener('click',function(){ try{ jl2_jobPanel(); }catch(e){ log('（行当暂未开张：'+(e&&e.message)+'）','sys'); } });
   document.getElementById('btn-auto').addEventListener('click',openAutoPanel);
   
 window.__M2=1;
@@ -23378,6 +23531,11 @@ function openQuests(){
     '云游之人：许多人物会在天下行走，多走动才能遇见他们。'
   ];
   side.forEach(s=>{ const p=document.createElement('div'); p.style.cssText='font-size:.76em;color:#ffffff;padding:5px 8px;border-left:2px solid rgba(255,255,255,.4);margin:4px 0;'; p.textContent=s; h.appendChild(p); });
+  // JL2 行当入口：20 环日常，产出主线材料/情报
+  const jobBtn=document.createElement('button'); jobBtn.className='btn green'; jobBtn.textContent='开张行当（20 环）';
+  jobBtn.style.cssText='display:block;width:100%;margin-top:10px;';
+  jobBtn.addEventListener('click',function(){ document.getElementById('overlay').classList.remove('show'); try{ jl2_jobPanel(); }catch(e){ log('（行当暂未开张：'+(e&&e.message)+'）','sys'); } });
+  h.appendChild(jobBtn);
   openModal('任务与剧情', ()=>h);
 }
 
@@ -23700,6 +23858,34 @@ function openQuests(){
       else if (cat === '支线') cat = 'side';
       else cat = cat || 'side';
 
+      // 旧任务结构补强：给杀/采阶段挂非战斗路径，给所有任务加一次收尾抉择。
+      // 只改适配后的副本，不碰原始 QUESTS 表；因此 446 条旧任务可零改写获得机制深度。
+      var h = 0, _ci;
+      for (_ci = 0; _ci < id.length; _ci++) h = (h * 31 + id.charCodeAt(_ci)) >>> 0;
+      for (_ci = 0; _ci < stages.length; _ci++) {
+        var stg = stages[_ci];
+        if (!stg) continue;
+        if (stg.type === 'kill' && !stg.alt) stg.alt = ['poison', 'lure', 'bribe'];
+        if (stg.type === 'collect' && !stg.alt) {
+          stg.alt = ['buy'];
+          stg.altCost = Math.max(5, Math.round((q.reward && q.reward.gold ? q.reward.gold : 20) * 0.25));
+        }
+      }
+      var hasChoice = false;
+      for (_ci = 0; _ci < stages.length; _ci++) if (stages[_ci] && stages[_ci].type === 'choice') hasChoice = true;
+      if (!hasChoice) {
+        var giver0 = q.giver || q.turnin || '委托人';
+        stages.push({
+          id: 's' + stages.length, type: 'choice',
+          desc: '收尾之际，你打算如何交代？',
+          choices: [
+            { text: '照实回禀', effects: [{ flag: 'j_' + id + '_frank' }, { aff: [giver0, 3] }] },
+            { text: '留一手，只说成事', effects: [{ flag: 'j_' + id + '_quiet' }, { gold: 5 }] },
+            { text: '多问一句缘由', effects: [{ flag: 'j_' + id + '_ask' }, { fame: 1 }] }
+          ]
+        });
+      }
+
       // 附录 A：旧 reward{item} 归一为新 reward{items:[{name,n}]}
       var reward = {};
       if (q.reward && typeof q.reward === 'object') {
@@ -23737,6 +23923,7 @@ function openQuests(){
         if (q[carry[c]] !== undefined) d[carry[c]] = q[carry[c]];
       }
       if (q.ttl && !d.fail) d.fail = { type: 'time', turns: q.ttl, penalty: {} };
+      if (!d.fail && d.cat !== 'daily') d.fail = { type: 'time', turns: 30 + (h % 20), penalty: { fame: -1 } };
       if (id) _adapted[id] = d;
       return d;
     } catch (e) { jl2_err('jl2_adaptLegacy ' + (forcedId || ''), e); return null; }
@@ -23991,8 +24178,9 @@ function openQuests(){
       }
       case 'talk': {
         var npc = stage.npc || stage.what || '';
-        if (t === 'talk' && (!npc || jl2_match(ev.npc || ev.who, npc)) &&
-            (!stage.topic || ev.topic === stage.topic)) pr.n = 1;
+        // topic 降为可选 flavor：全局 talk 事件只广播 npc，从不广播 topic，
+        // 若仍以 topic 为门槛，拜会永不成立。故只要 npc 命中即算完成。
+        if (t === 'talk' && (!npc || jl2_match(ev.npc || ev.who, npc))) pr.n = 1;
         if (g && g.flags && g.flags['qTalk_' + id]) pr.n = 1; // 旧版拜会标记
         done = (pr.n || 0) >= 1;
         break;
@@ -24219,6 +24407,7 @@ function openQuests(){
           jl2_refreshUI();
         }
       }
+      jl2_renderQuestPanelActions();
     } catch (e) { jl2_err('jl2_questAdvance ' + id, e); }
     finally { delete _advancing[id]; }
   }
@@ -24319,6 +24508,7 @@ function openQuests(){
       jl2_refreshUI();
       // 首帧用当前世界状态判定一次（如 reach/aff 已满足）
       jl2_questAdvance(id, 'accept', { quest: id }, true);
+      jl2_renderQuestPanelActions();
       return true;
     } catch (e) { jl2_err('jl2_questAccept ' + id, e); return false; }
   }
@@ -24384,6 +24574,10 @@ function openQuests(){
       if (g) {
         if (!g.questDone) g.questDone = {};
         g.questDone[id] = true;
+        // 章节链靠 game.flags[id] 解锁后续（第一章六条就是这么接的）：
+        // 过去只写 qlog.done，导致 m1_02 的 lock.flags['jl2_m1_01'] 永远不成立。
+        if (!g.flags) g.flags = {};
+        g.flags[id] = true;
         if (def.cat === 'daily') {
           jl2_dailyRoll(log);
           if (log.daily.done.indexOf(id) < 0) log.daily.done.push(id);
@@ -24394,6 +24588,23 @@ function openQuests(){
       jl2_logSuccess('—— 完成任务 “' + (def.title || id) + '” ' + (summary || '') + ' ——');
       jl2_emit('quest', { quest: id, phase: 'done', branch: branch });
       jl2_refreshUI();
+
+      // 交付对白：对白选项的 effects 里可能再触发 turnin，用 game 级 guard 截断递归。
+      var pd = (typeof jl2_playDialogue === 'function') ? jl2_playDialogue :
+               ((G && typeof G.jl2_playDialogue === 'function') ? G.jl2_playDialogue : null);
+      if (pd && def.dialogue && def.dialogue.turnin) {
+        var gg = jl2_game();
+        if (gg) {
+          if (!gg._jl2TurninDlg) gg._jl2TurninDlg = {};
+          if (!gg._jl2TurninDlg[id]) {
+            gg._jl2TurninDlg[id] = true;
+            try { pd(def.dialogue.turnin, { quest: id, npc: def.turnin || def.giver || '' }); }
+            catch (e2) { jl2_err('turnin dialogue ' + id, e2); }
+            finally { delete gg._jl2TurninDlg[id]; }
+          }
+        }
+      }
+      jl2_renderQuestPanelActions();
       return true;
     } catch (e) { jl2_err('jl2_questTurnIn ' + id, e); return false; }
   }
@@ -24405,26 +24616,38 @@ function openQuests(){
       if (!a) return false;
       var def = jl2_questDef(id);
       if (!def) return false;
+      var stages = jl2_stages(def);
+
+      // 兼容面板按钮传来的数字下标 String(index)：解析成该 choice 的语义分支键。
+      // m1_01 等章节任务的 choice 多无 key 字段，此时保留数字串（jl2_findChoice
+      // 已支持 String(i) === String(branch) 的下标匹配）。
+      var branchKey = key;
+      var si = stageId ? jl2_stageIndex(def, stageId) : -1;
+      if (si >= 0 && /^\d+$/.test(String(key))) {
+        var cs = stages[si], ci = cs && cs.choices && cs.choices[Number(key)];
+        if (ci) branchKey = ci.key || ci.branch || ci.id || String(key);
+      }
 
       // 任务级 branch（影响后续任务/NPC/世界）
-      if (def.branch && def.branch.options && def.branch.options[key] !== undefined) {
-        a.branch = key;
-        var bo = def.branch.options[key];
-        jl2_applyEffects(bo.effects, { id: id, def: def, a: a, branch: key });
-        jl2_emit('choice', { quest: id, branch: key, stage: stageId || null });
+      if (def.branch && def.branch.options && def.branch.options[branchKey] !== undefined) {
+        a.branch = branchKey;
+        var bo = def.branch.options[branchKey];
+        jl2_applyEffects(bo.effects, { id: id, def: def, a: a, branch: branchKey });
+        jl2_emit('choice', { quest: id, branch: branchKey, stage: stageId || null });
         jl2_refreshUI();
+        jl2_renderQuestPanelActions();
         return true;
       }
 
       // 阶段级 choice：推进状态机，由 stageDone 统一结算 effects / goto
-      var stages = jl2_stages(def);
       for (var i = 0; i < stages.length; i++) {
         var st = stages[i];
         if (stageId && st.id !== stageId) continue;
         if (st.type !== 'choice' || a.stage !== i) continue;
         if (!jl2_findChoice(st, key)) continue;
         a.prog[st.id || ('s' + i)] = {}; // 交给 stageDone 计次并套用 effects
-        jl2_questAdvance(id, 'choice', { quest: id, branch: key, stage: st.id || ('s' + i) }, true);
+        jl2_questAdvance(id, 'choice', { quest: id, branch: branchKey, stage: st.id || ('s' + i) }, true);
+        jl2_renderQuestPanelActions();
         return true;
       }
       return false;
@@ -24510,6 +24733,141 @@ function openQuests(){
     } catch (e) { jl2_err('jl2_questTrackerText', e); return ''; }
   }
 
+  /* ============================================================
+   * 8b. 任务面板操作区（choice 抉择 / 交付 / 简明目标）
+   *     index.html 提供 <div id="jl2-quest-actions"></div> 容器。
+   * ========================================================== */
+  function jl2_esc(s) {
+    s = String(s == null ? '' : s);
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function jl2_bindQuestPanelActions(container) {
+    if (container.__jl2QuestActBound) return;
+    container.__jl2QuestActBound = true;
+    container.addEventListener('click', function (ev) {
+      var t = ev && ev.target, btn = null;
+      while (t && t !== container) {
+        if (t.tagName && String(t.tagName).toLowerCase() === 'button' &&
+            t.getAttribute && t.getAttribute('data-jl2q') != null) { btn = t; break; }
+        t = t.parentNode;
+      }
+      if (!btn) return;
+      var id = btn.getAttribute('data-jl2q');
+      try {
+        if (btn.getAttribute('data-jl2t')) jl2_questTurnIn(id);
+        else if (btn.getAttribute('data-jl2a')) jl2_legacyAlt(id, btn.getAttribute('data-jl2a'), btn.getAttribute('data-jl2s'));
+        else jl2_questChoose(id, btn.getAttribute('data-jl2c'), btn.getAttribute('data-jl2s'));
+      } catch (e) { jl2_err('jl2QuestPanelAction', e); }
+      jl2_renderQuestPanelActions();
+    });
+  }
+
+  // 旧任务非战斗路径：买通/下毒/引开/购买，都通过事件总线被 Stage 消费
+  function jl2_legacyAlt(id, altType, stageId) {
+    try {
+      var q = jl2_qlog(), a = q && q.active && q.active[id];
+      if (!a) return false;
+      var def = jl2_questDef(id);
+      if (!def) return false;
+      var stages = jl2_stages(def);
+      var st = null;
+      for (var i = 0; i < stages.length; i++) {
+        if ((stages[i].id || ('s' + i)) === stageId) { st = stages[i]; break; }
+      }
+      if (!st) return false;
+      if (altType === 'buy' && st.type === 'collect') {
+        var cost = Math.max(1, Math.round(st.altCost || 10));
+        var p = jl2_player();
+        if (!p || (p.gold || 0) < cost) { jl2_log('（银两不足，买不来这些材料。）', 'sys'); return false; }
+        p.gold -= cost;
+        var need = Math.max(1, st.need || 1);
+        for (var n = 0; n < need; n++) jl2_addItem(st.item || st.what, 1);
+        jl2_log('（你花 ' + cost + ' 两从行商手里买齐了 ' + (st.item || st.what) + '。）', 'sys');
+        jl2_emit('item', { name: st.item || st.what, delta: need, from: 'buy' });
+      } else {
+        jl2_emit(altType, {
+          quest: id, enemy: st.enemy || st.what, altKill: st.enemy || st.what,
+          item: st.item || st.what, npc: st.npc || def.turnin || def.giver
+        });
+        jl2_log('（你换了条路子：' + altType + '。）', 'sys');
+      }
+      return true;
+    } catch (e) { jl2_err('jl2_legacyAlt', e); return false; }
+  }
+
+  function jl2_renderQuestPanelActions() {
+    if (typeof document === 'undefined' || !document.getElementById) return;
+    try {
+      var container = document.getElementById('jl2-quest-actions');
+      if (!container) return;
+      var q = jl2_qlog(), html = '';
+      if (q && q.active) {
+        var ids = Object.keys(q.active);
+        for (var i = 0; i < ids.length; i++) {
+          var id = ids[i], a = q.active[id];
+          if (!a) continue;
+          var def = jl2_questDef(id);
+          if (!def) continue;
+          var title = def.title || id;
+          var stages = jl2_stages(def);
+          var st = (a.stage >= 0 && a.stage < stages.length) ? stages[a.stage] : null;
+
+          // 非战斗路径：旧任务适配后也会带 alt，给玩家真正的选择而不是文案
+          if (st && Array.isArray(st.alt) && st.alt.length) {
+            var sidAlt = st.id || ('s' + a.stage);
+            var altNames = { poison: '下毒', lure: '引兽相斗', bribe: '买通', buy: '花钱买齐', detour: '绕行' };
+            html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + '：另有路子</div>';
+            for (var ai = 0; ai < st.alt.length; ai++) {
+              var av = st.alt[ai], at = (typeof av === 'string') ? av : (av && av.type);
+              if (!at) continue;
+              html += '<button class="btn small jl2-qact-btn" data-jl2q="' + jl2_esc(id) +
+                '" data-jl2a="' + jl2_esc(at) + '" data-jl2s="' + jl2_esc(sidAlt) + '">' +
+                jl2_esc(altNames[at] || at) + '</button>';
+            }
+            continue;
+          }
+
+          // 抉择阶段：渲染 stage.desc 与每个 choice 按钮
+          if (st && st.type === 'choice' && !a.ready) {
+            var sid = st.id || ('s' + a.stage);
+            html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + '：' + jl2_esc(st.desc || '') + '</div>';
+            var choices = st.choices || [];
+            for (var c = 0; c < choices.length; c++) {
+              var ch = choices[c] || {};
+              var label = ch.text || ch.label || ch.id || ch.key || ('选项 ' + (c + 1));
+              html += '<button class="btn small jl2-qact-btn" data-jl2q="' + jl2_esc(id) +
+                '" data-jl2c="' + c + '" data-jl2s="' + jl2_esc(sid) + '">' + jl2_esc(label) + '</button>';
+            }
+            continue;
+          }
+
+          // 交付阶段：背包已备齐就给按钮，不再等 a.ready
+          // （旧版只认 a.ready，而 deliver 是交付时才扣物，导致按钮永远不出现）
+          var deliverReady = false;
+          if (st && st.type === 'deliver') {
+            deliverReady = jl2_countItem(st.item || st.what) >= (st.need || 1);
+          }
+          // 全部完成 / ready：交付按钮
+          if (a.ready || a.stage >= stages.length || deliverReady) {
+            var to = def.turnin || def.giver || '委托人';
+            html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + '：诸事已毕</div>';
+            html += '<button class="btn small jl2-qact-btn" data-jl2q="' + jl2_esc(id) +
+              '" data-jl2t="1">交付 · ' + jl2_esc(to) + '</button>';
+            continue;
+          }
+
+          // 无可操作：一行简明目标
+          var goal = (st && st.desc) || def.hook || def.desc || '';
+          html += '<div class="jl2-qact-line">◈ ' + jl2_esc(title) + ' — ' + jl2_esc(goal) + '</div>';
+        }
+      }
+      if (container.innerHTML !== html) container.innerHTML = html;
+      jl2_bindQuestPanelActions(container);
+    } catch (e) { jl2_err('jl2_renderQuestPanelActions', e); }
+  }
+
   function jl2_questInit() {
     try {
       jl2_qlog();
@@ -24570,7 +24928,8 @@ function openQuests(){
     jl2_adaptLegacy: jl2_adaptLegacy,
     jl2_questTrackerText: jl2_questTrackerText,
     jl2_questChoose: jl2_questChoose,
-    jl2_questFail: jl2_questFail
+    jl2_questFail: jl2_questFail,
+    jl2_renderQuestPanelActions: jl2_renderQuestPanelActions
   };
   for (var key in API) if (Object.prototype.hasOwnProperty.call(API, key)) G[key] = API[key];
 
@@ -24655,6 +25014,10 @@ function openQuests(){
       v = num(rewardObj.exp, 0);
       if (v > 0 && p) { p.exp = num(p.exp, 0) + v; parts.push('经验+' + v); }
       else if (v < 0 && p) { p.exp = Math.max(0, num(p.exp, 0) + v); parts.push('经验' + v); }
+      // 任务/奇遇发的经验必须走同一条升级链，否则经验涨了等级不动，后续任务被等级门槛卡死
+      if (v !== 0) {
+        try { if (typeof G.checkLevelUp === 'function') G.checkLevelUp(); } catch (e) { err('reward.levelUp', e); }
+      }
 
       v = num(rewardObj.gold, 0);
       if (v > 0 && p) { p.gold = num(p.gold, 0) + v; parts.push('银两+' + v); }
@@ -24740,6 +25103,10 @@ function openQuests(){
   var JL2_AFFIX_DESC = {
     锋利: '暴击', 坚韧: '减伤', 轻捷: '闪避', 破甲: '无视防御', 吸血: '吸血', 通灵: '技能效果'
   };
+  var JL2_AFFIX_STAT = {
+    锋利: 'crit', 坚韧: 'dr', 轻捷: 'dodge',
+    破甲: 'pierce', 吸血: 'lifesteal', 通灵: 'spell'
+  };
   var JL2_QUALITY = {
     凡: { mul: 1.0, affixes: 0, color: '白' },
     精: { mul: 1.15, affixes: 1, color: '绿' },
@@ -24795,8 +25162,10 @@ function openQuests(){
       }
       var q = JL2_QUALITY[quality];
       var h = hashStr(base);
-      var rawDmg = src ? num(src.damage != null ? src.damage : src.atkBonus, 10 + (h % 9)) : (10 + (h % 9));
-      var rawDef = src ? num(src.defBonus, 0) : (h % 5);
+      // 只有原表真的给了攻击/防御，派生数据才给；否则按哈希编造会让换防具改变攻击力。
+      var rawDmg = 0, rawDef = 0;
+      if (src && (src.damage != null || src.atkBonus != null)) rawDmg = num(src.damage != null ? src.damage : src.atkBonus, 0);
+      if (src && src.defBonus != null) rawDef = num(src.defBonus, 0);
 
       var affix = db.affix ? db.affix.slice() : [];
       if (!affix.length && q.affixes > 0) {
@@ -24810,6 +25179,13 @@ function openQuests(){
         }
       }
 
+      var affixStats = { crit: 0, dr: 0, dodge: 0, pierce: 0, lifesteal: 0, spell: 0 };
+      affix.forEach(function (a) {
+        var ap = splitName(a);
+        var statKey = JL2_AFFIX_STAT[ap.base];
+        if (statKey) affixStats[statKey] += num(ap.level, 0);
+      });
+
       var level = clamp(num(sp.level, 0), 0, 9);
       var lvMul = 1 + 0.06 * level;
       var data = {
@@ -24819,6 +25195,7 @@ function openQuests(){
         atkBonus: Math.round(rawDmg * q.mul * lvMul),
         defBonus: Math.round(rawDef * q.mul * lvMul),
         affix: affix,
+        affixStats: affixStats,
         affixDesc: affix.map(function (a) { return a.replace(/\+.*$/, '') + '（' + (JL2_AFFIX_DESC[a.replace(/\+.*$/, '')] || '增益') + '）'; }),
         set: db.set || null,
         setData: db.set && JL2_SETS[db.set] ? JL2_SETS[db.set] : null,
@@ -24841,6 +25218,36 @@ function openQuests(){
       var f = worn ? 0.5 : 1;
       return { atk: Math.round(num(item.atkBonus, 0) * f), def: Math.round(num(item.defBonus, 0) * f) };
     } catch (e) { err('itemBonus', e); return { atk: 0, def: 0 }; }
+  }
+
+  /* ─── 装备聚合：把全身装备的词条 / 套装汇成一份只读汇总 ─────────── */
+  function jl2_equipAggregate() {
+    var out = {
+      atk: 0, def: 0, crit: 0, dr: 0, dodge: 0, pierce: 0,
+      lifesteal: 0, spell: 0, sets: {}, affixes: []
+    };
+    try {
+      var p = (typeof player !== 'undefined') ? player : G.player;
+      if (!p || !isObj(p.equipment)) return out;
+      Object.keys(p.equipment).forEach(function (slot) {
+        var eq = p.equipment[slot];
+        if (!eq) return;
+        var name = isObj(eq) ? (eq.name || eq.base) : eq;
+        if (!name) return;
+        var d = jl2_itemData(name);
+        if (!d) return;
+        out.atk += num(d.atkBonus, 0);
+        out.def += num(d.defBonus, 0);
+        ['crit', 'dr', 'dodge', 'pierce', 'lifesteal', 'spell'].forEach(function (k) {
+          out[k] += num(d.affixStats && d.affixStats[k], 0);
+        });
+        if (d.set) out.sets[d.set] = num(out.sets[d.set], 0) + 1;
+        if (Array.isArray(d.affix)) {
+          d.affix.forEach(function (a) { out.affixes.push(a); });
+        }
+      });
+    } catch (e) { err('equipAggregate', e); }
+    return out;
   }
 
   /* ─── 强化 / 修理 / 鉴定 ───────────────────────────────────── */
@@ -25188,6 +25595,7 @@ function openQuests(){
   G.jl2_reward = jl2_reward;
   G.jl2_itemData = jl2_itemData;
   G.jl2_itemBonus = jl2_itemBonus;
+  G.jl2_equipAggregate = jl2_equipAggregate;
   G.jl2_strengthen = jl2_strengthen;
   G.jl2_repair = jl2_repair;
   G.jl2_identify = jl2_identify;
@@ -25423,7 +25831,7 @@ function openQuests(){
         try {
           var s = state();
           if (!s) return;
-          s.lastBattleEnd = { enemy: p && (p.enemy || p.name) || '', win: !!(p && p.win), at: num(getGame() && getGame().turn, 0) };
+          s.lastBattleEnd = { enemy: p && (p.enemy || p.name) || '', win: !!(p && p.win), at: num(getGame() && getGame().turns, 0) };
         } catch (e) { err('on.battle_end', e); }
       });
       return { ok: true };
@@ -25627,7 +26035,7 @@ function openQuests(){
           var h = s.history[name];
           if (win) h.wins = num(h.wins, 0) + 1;
           else h.losses = num(h.losses, 0) + 1;
-          h.lastAt = num(getGame() && getGame().turn, 0);
+          h.lastAt = num(getGame() && getGame().turns, 0);
         }
         // 战斗结束：清掉本场的连招、重复、蓄势与架势，破绽回合计数归零。
         s.chain = []; s.lastMove = null; s.repeat = 0; s.charge = 0;
@@ -25647,12 +26055,68 @@ function openQuests(){
     }
   }
 
+  /* ── 战斗效果落地：把 effects 安全写入 battle，产出中文 notes ──── */
+  function jl2_applyCombatEffects(effects, ctx) {
+    var notes = [];
+    if (!Array.isArray(effects)) return notes;
+    try {
+      var bt = (typeof battle !== 'undefined') ? battle
+             : (typeof G !== 'undefined' ? G.battle : null);
+      if (!isObj(bt)) return notes;
+      for (var i = 0; i < effects.length; i++) {
+        var e = effects[i];
+        if (!isObj(e)) continue;
+        var v = num(e.value, 0);
+        var t = Math.max(1, num(e.turns, 1));
+        switch (e.type) {
+          case 'shield':
+            bt.jl2Shield = (bt.jl2Shield || 0) + v;
+            notes.push('护体真气凝成，下回合先挡下 ' + v + ' 点伤害。');
+            break;
+          case 'dodge':
+            bt.jl2Dodge = Math.max(bt.jl2Dodge || 0, v);
+            notes.push('身法飘忽，下回合闪避提升至 ' + Math.round(v * 100) + '%。');
+            break;
+          case 'armorBreak':
+            bt.jl2ArmorBreak = { value: v, turns: t };
+            notes.push('破甲得手，接下来 ' + t + ' 回合攻击附带 ' + v + ' 点额外伤害。');
+            break;
+          case 'bleed':
+            bt.jl2Bleed = { value: v, turns: t };
+            notes.push('对方流血不止，接下来 ' + t + ' 回合每回合损失 ' + v + ' 点气血。');
+            break;
+          case 'stun':
+            bt.jl2Stun = (bt.jl2Stun || 0) + 1;
+            notes.push('对方被定住，下回合无法出手。');
+            break;
+          default:
+            break;
+        }
+      }
+    } catch (e2) { err('applyCombatEffects', e2); }
+    return notes;
+  }
+
+  /* ── 破绽倒计时：按回合数推算距下次破绽的回合，供按钮条显示 ────── */
+  function jl2_breakState(round) {
+    var r = num(round, 0);
+    var m = ((r % 3) + 3) % 3;
+    var isBreak = (m === 0);
+    var remaining = isBreak ? 0 : (3 - m);
+    var hint = isBreak
+      ? '本回合正是破绽，速用“寻隙”一击重创敌势！'
+      : '再过 ' + remaining + ' 回合，敌方将露破绽，宜先蓄势待机。';
+    return { remaining: remaining, isBreak: isBreak, hint: hint };
+  }
+
   /* ── 导出：仅 jl2_ 前缀 + 只读数据表 ───────────────────────────── */
   G.jl2_combatInit = jl2_combatInit;
   G.jl2_combatPrepare = jl2_combatPrepare;
   G.jl2_combatDamageMod = jl2_combatDamageMod;
   G.jl2_combatAfter = jl2_combatAfter;
   G.jl2_combatText = jl2_combatText;
+  G.jl2_applyCombatEffects = jl2_applyCombatEffects;
+  G.jl2_breakState = jl2_breakState;
   G.JL2_COMBAT_STANCES = STANCES;
 })();
 
@@ -26275,6 +26739,8 @@ function jl2_fallbackReward(r) {
 /* 单条 effect -> 中文摘要；所有状态写回 game.flags / game.world / player */
 function jl2_applyEffectOne(eff) {
   if (eff == null) return '';
+  if (!game.world) game.world = {};
+  if (!game.world.flags) game.world.flags = {};
   if (typeof eff === 'string') { game.flags[eff] = true; return '（记下 ' + eff + '）'; }
   var s = '';
 
@@ -26319,6 +26785,44 @@ function jl2_applyEffectOne(eff) {
       s += '（世情已记）　';
     } else { game.flags[eff.flag] = true; s += '（记下 ' + eff.flag + '）　'; }
   }
+  // —— 世界后果：章节选择必须真的改变房间、商店、江湖传闻 ——
+  if (eff.worldFlag != null) {
+    var wf = eff.worldFlag;
+    var wk, wv;
+    if (Array.isArray(wf)) { wk = wf[0]; wv = wf.length > 1 ? wf[1] : true; }
+    else if (typeof wf === 'object') { for (var wkk in wf) { if (Object.prototype.hasOwnProperty.call(wf, wkk)) { game.world.flags[wkk] = wf[wkk]; } } s += '（世道有变）　'; wk = null; }
+    else { wk = String(wf); wv = true; }
+    if (wk) game.world.flags[wk] = wv;
+    if (Array.isArray(wf)) s += '（世道：' + wk + '→' + wv + '）　';
+  }
+  if (eff.roomFlag != null) {
+    var rf = Array.isArray(eff.roomFlag) ? eff.roomFlag : [eff.roomFlag, 'changed', true];
+    var rn = rf[0], rk = rf[1] || 'changed', rv = rf.length > 2 ? rf[2] : true;
+    if (!game.world.rooms) game.world.rooms = {};
+    if (!game.world.rooms[rn]) game.world.rooms[rn] = {};
+    if (!game.world.rooms[rn].flags) game.world.rooms[rn].flags = {};
+    game.world.rooms[rn].flags[rk] = rv;
+    s += '（' + rn + '气象已变）　';
+  }
+  if (eff.shopStock != null) {
+    var sf = Array.isArray(eff.shopStock) ? eff.shopStock : [eff.shopStock, '?', 1];
+    var shop = sf[0], item = sf[1], delta = Number(sf[2]) || 1;
+    if (!game.world.shopStock) game.world.shopStock = {};
+    if (!game.world.shopStock[shop]) game.world.shopStock[shop] = {};
+    game.world.shopStock[shop][item] = (game.world.shopStock[shop][item] || 0) + delta;
+    s += '（' + shop + '货架：' + item + (delta > 0 ? '+' : '') + delta + '）　';
+  }
+  if (eff.respect != null || eff.debt != null) {
+    var who = eff.npc || (Array.isArray(eff.respect) ? eff.respect[0] : (Array.isArray(eff.debt) ? eff.debt[0] : ''));
+    var rv2 = eff.respect != null ? (Array.isArray(eff.respect) ? eff.respect[1] : eff.respect) : 0;
+    var dv = eff.debt != null ? (Array.isArray(eff.debt) ? eff.debt[1] : eff.debt) : 0;
+    who = who || eff.who || '';
+    if (who && typeof jl2_relAdd === 'function') {
+      if (rv2) jl2_relAdd(who, 'respect', Number(rv2) || 0);
+      if (dv) jl2_relAdd(who, 'debt', Number(dv) || 0);
+      s += who + (rv2 ? '敬重' + (rv2 > 0 ? '+' : '') + rv2 : '') + (dv ? '人情' + (dv > 0 ? '+' : '') + dv : '') + '　';
+    }
+  }
   if (eff.quest != null) {
     var qid = typeof eff.quest === 'object' ? (eff.quest.id || eff.quest.name) : eff.quest;
     game.flags['quest_' + qid] = true;
@@ -26339,6 +26843,41 @@ function jl2_applyEffectOne(eff) {
     game.flags['declined_' + did] = true;
     try { if (typeof jl2_emit === 'function') jl2_emit('decline', { id: did }); } catch (_) {}
     s += '（谢绝 ' + did + '）　';
+  }
+  // 主线交付 / 抉择 / 分支：转发给 quest2 引擎（questTurnIn 内部已刷新面板）
+  if (eff.turnin != null) {
+    var tids = Array.isArray(eff.turnin) ? eff.turnin : [eff.turnin];
+    for (var ti = 0; ti < tids.length; ti++) {
+      var tid = tids[ti];
+      if (!tid) continue;
+      if (typeof jl2_questTurnIn === 'function') {
+        try { jl2_questTurnIn(tid); } catch (e) { jl2_dlgErr('turnin', e); }
+      }
+    }
+    s += '（交付 ' + tids.join('、') + '）　';
+  }
+  if (eff.choose != null) {
+    var qid2 = null, ck = null, cst = null;
+    if (Array.isArray(eff.choose)) { qid2 = eff.choose[0]; ck = eff.choose[1]; cst = eff.choose[2]; }
+    else if (typeof eff.choose === 'object') {
+      qid2 = eff.choose.id || eff.choose.quest;
+      ck = eff.choose.key;
+      cst = eff.choose.stage || eff.choose.stageId;
+    }
+    if (qid2 && typeof jl2_questChoose === 'function') {
+      try { jl2_questChoose(qid2, ck, cst); } catch (e) { jl2_dlgErr('choose', e); }
+      s += '（抉择 ' + qid2 + '）　';
+    }
+  }
+  if (eff.branch != null) {
+    var bqid = eff.quest || eff.id ||
+      (typeof eff.branch === 'object' ? (eff.branch.id || eff.branch.quest || eff.branch.qid) : null);
+    var bk = (typeof eff.branch === 'object' ? (eff.branch.key || eff.branch.branch || eff.branch.value) : eff.branch);
+    var bst = (typeof eff.branch === 'object' ? (eff.branch.stage || eff.branch.stageId) : null);
+    if (bqid && bk != null && typeof jl2_questChoose === 'function') {
+      try { jl2_questChoose(bqid, bk, bst); } catch (e) { jl2_dlgErr('branch', e); }
+      s += '（择 ' + bk + '）　';
+    }
   }
   if (eff.knowledge != null) {
     var ks = Array.isArray(eff.knowledge) ? eff.knowledge : [eff.knowledge];
@@ -27483,6 +28022,23 @@ function jl2_guideStageHit(stage, type, p){
 }
 
 /* ── 公共 API ─────────────────────────────────────────── */
+function jl2_guideEnsureObserver(){
+  try{
+    if(JL2_GUIDE_OBS) return true;
+    if(typeof MutationObserver !== 'function' || typeof document === 'undefined') return false;
+    var target = document.getElementById('s-quest');
+    if(!target) return false;
+    JL2_GUIDE_OBS = new MutationObserver(function(){
+      if(JL2_GUIDE_BAR_WRITING) return;
+      var st = jl2_guideState(false);
+      if(st && !st.done && !st.skipped) jl2_guideBar();
+      else if(st) jl2_guideReleaseBar();
+    });
+    JL2_GUIDE_OBS.observe(target, {childList:true, subtree:true, characterData:true});
+    return true;
+  }catch(e){ jl2_guideErr('ensureObserver: '+e.message); return false; }
+}
+
 function jl2_guideStart(originId){
   try{
     var id = jl2_guideInferOrigin(originId);
@@ -27498,6 +28054,7 @@ function jl2_guideStart(originId){
     st.done = false;
     st.startedAt = (typeof game !== 'undefined' && game && game.turns) || 0;
     st.lastSig = '';
+    jl2_guideEnsureObserver(); // 二次开局时观察器可能已被 release 断开
     jl2_guideLog(g.monologue, 'sys');
     jl2_guideBar();
     return st;
@@ -27551,6 +28108,17 @@ function jl2_guideOnEvent(type, p){
 }
 
 var JL2_GUIDE_BAR_WRITING = false;
+var JL2_GUIDE_OBS = null;
+var JL2_GUIDE_RELEASING = false;
+function jl2_guideReleaseBar(){
+  if(JL2_GUIDE_RELEASING) return;
+  JL2_GUIDE_RELEASING = true;
+  try{
+    if(JL2_GUIDE_OBS){ JL2_GUIDE_OBS.disconnect(); JL2_GUIDE_OBS = null; }
+    if(typeof updateQuestTracker === 'function') updateQuestTracker();
+  }catch(e){ jl2_guideErr('release: '+e.message); }
+  finally{ JL2_GUIDE_RELEASING = false; }
+}
 function jl2_guideBar(){
   try{
     var st = jl2_guideState(true);
@@ -27590,8 +28158,13 @@ function jl2_guideBar(){
            + '　<span id="jl2-guide-skip" style="color:#a5d9ad;cursor:pointer;">［跳过引导］</span></div>';
     }
 
+    // 引导结束后把目标条还给任务系统，别让「引导完成」长期占着追踪栏。
+    if((st.done || st.skipped) && !usingLog){ jl2_guideReleaseBar(); return; }
+
     // 同一内容不重写：MutationObserver 盯着这个元素，重复写入会自旋把页面卡死。
-    if(!usingLog && el.getAttribute('data-jl2-guide') === plain) return;
+    // 但 updateQuestTracker 会把 innerHTML 覆盖回去（属性还在、内容已变），
+    // 所以必须同时比对真实 DOM，否则引导会被旧任务条永久遮住。
+    if(!usingLog && el.getAttribute('data-jl2-guide') === plain && el.innerHTML === (el.getAttribute('data-jl2-guide-html') || '')) return;
     JL2_GUIDE_BAR_WRITING = true;
     try{
       if(usingLog){
@@ -27603,6 +28176,7 @@ function jl2_guideBar(){
         el.appendChild(d);
       } else {
         el.setAttribute('data-jl2-guide', plain);
+        el.setAttribute('data-jl2-guide-html', html);
         el.innerHTML = html;
         var skip = document.getElementById('jl2-guide-skip');
         if(skip) skip.addEventListener('click', function(){ jl2_guideSkip(); });
@@ -27618,17 +28192,7 @@ function jl2_guideInit(){
       jl2_on('*', function(type, p){ jl2_guideOnEvent(type, p); });
     }
     // updateQuestTracker 会覆写 #s-quest；引导期间用观察器把目标条贴回去。
-    if(typeof MutationObserver === 'function' && typeof document !== 'undefined'){
-      var target = document.getElementById('s-quest');
-      if(target){
-        var ob = new MutationObserver(function(){
-          if(JL2_GUIDE_BAR_WRITING) return;
-          var st = jl2_guideState(false);
-          if(st && !st.done && !st.skipped) jl2_guideBar();
-        });
-        ob.observe(target, {childList:true, subtree:true, characterData:true});
-      }
-    }
+    jl2_guideEnsureObserver();
   }catch(e){ jl2_guideErr('init: '+e.message); }
 }
 
@@ -28206,7 +28770,7 @@ function jl2_textStats(){
       dialogue: { accept: 'd_m1_01_accept', turnin: 'd_m1_01_turnin' },
       stages: [
         { id: 's1', type: 'reach', room: '泥瓶巷', desc: '去巷口看那具尸体', hint: '泥瓶巷' },
-        { id: 's2', type: 'talk', npc: '杨老头', topic: '认刀', desc: '请杨老头认那截断刀', hint: '杨老头在泥瓶巷' },
+        { id: 's2', type: 'talk', npc: '杨老头', desc: '请杨老头认那截断刀', hint: '杨老头在泥瓶巷' },
         { id: 's3', type: 'choice', desc: '死人的事，报官还是不报', choices: [
           { text: '报官，交衙门处置', effects: [{ aff: ['巡城武官', 10] }, { flag: 'jl2_ch1_tip_off' }], goto: 's4' },
           { text: '私了，先收好那半张药方', effects: [{ aff: ['杨老头', 8] }, { flag: 'jl2_ch1_cover_up' }, { item: '断刀' }], goto: 's4' },
@@ -29401,6 +29965,771 @@ function jl2_textStats(){
   JL2_ROOT.JL2_CONTENT = JL2_CONTENT;
 })();
 
+// ---- src/loops2.js ----
+//<<LOOPS2-BEGIN>>
+/*
+ * loops2.js —— JL2 可重复游玩循环引擎：行当二十环 + 奇遇条件触发
+ *
+ * 只读依赖（全部做存在性兜底，不重定义任何现有全局）：
+ *   JL2_CONTENT.jobs / JL2_CONTENT.encounters   （content2.js）
+ *   game.qlog.daily / game.world.flags / game.flags / game.turns / game.hour / game.weather
+ *   player.room / player.inventory / player.aff / player.skills
+ *   jl2_on / jl2_emit            （quest2.js）
+ *   jl2_reward                   （progression2.js）
+ *   jl2_playDialogue             （dialogue2.js）
+ *   log / logSuccess / addItem / removeItem / curWeather / WEATHERS / openModal （index.html）
+ *
+ * 铁律：所有新全局函数 jl2_ 前缀；不重定义任何现有全局；无 import/export/require；
+ *       代码字符串用 ASCII 直引号 ' / "；中文正文用中文引号“”；出错写 window.__bootErrs。
+ */
+(function (root) {
+  'use strict';
+
+  var G = root || (typeof globalThis !== 'undefined' ? globalThis : this);
+
+  function jl2_err(where, e) {
+    try {
+      if (!G.__bootErrs) G.__bootErrs = [];
+      G.__bootErrs.push('[loops2] ' + where + ': ' + ((e && e.message) || e));
+    } catch (_) { /* 最后一道防线，绝不再抛 */ }
+  }
+  function jl2_safe(label, fn) {
+    try { return fn(); } catch (e) { jl2_err(label, e); return undefined; }
+  }
+
+  /* ============================================================
+   * 0. 基础设施：只读访问器 / 自愈
+   * ========================================================== */
+  function jl2_game() { return (typeof game !== 'undefined') ? game : null; }
+  function jl2_player() { return (typeof player !== 'undefined') ? player : null; }
+
+  function jl2_content() {
+    var c = G.JL2_CONTENT;
+    if (!c && typeof JL2_CONTENT !== 'undefined') c = JL2_CONTENT;
+    return c || null;
+  }
+  function jl2_fn(name) {
+    try { return (typeof G[name] === 'function') ? G[name] : null; }
+    catch (e) { return null; }
+  }
+  function jl2_log(text, cls) {
+    var f = jl2_fn('log');
+    if (f) f(text, cls || 'sys');
+  }
+  function jl2_logSuccess(text) {
+    var f = jl2_fn('logSuccess');
+    if (f) f(text); else jl2_log(text, 'success');
+  }
+  function jl2_turn() {
+    var g = jl2_game();
+    if (!g) return 0;
+    if (typeof g.turns === 'number') return g.turns;
+    if (typeof g.turn === 'number') return g.turn;
+    return 0;
+  }
+  // 一回合一日（见 index.html 注释「一回合一日」），turns 可作稳定的“第几日”
+  function jl2_dayNow() {
+    var g = jl2_game();
+    if (!g) return 1;
+    if (typeof g.turns === 'number') return g.turns;
+    return 1;
+  }
+
+  // 自愈 game.qlog.daily.job / done、game.world.flags、game.flags
+  function jl2_daily() {
+    var g = jl2_game();
+    if (!g) return null;
+    if (!g.qlog || typeof g.qlog !== 'object') g.qlog = {};
+    if (!g.qlog.daily || typeof g.qlog.daily !== 'object') g.qlog.daily = {};
+    if (!g.qlog.daily.done || typeof g.qlog.daily.done !== 'object') g.qlog.daily.done = {};
+    if (!Object.prototype.hasOwnProperty.call(g.qlog.daily, 'job')) g.qlog.daily.job = null;
+    if (!g.world || typeof g.world !== 'object') g.world = {};
+    if (!g.world.flags || typeof g.world.flags !== 'object') g.world.flags = {};
+    if (!g.flags || typeof g.flags !== 'object') g.flags = {};
+    return g.qlog.daily;
+  }
+
+  /* 行当表按“中文名”或“id”取条目（content2.js 里 jobs 以中文名做键） */
+  function jl2_jobDef(jobId) {
+    var c = jl2_content();
+    var jobs = c && c.jobs;
+    if (!jobs || !jobId) return null;
+    if (jobs[jobId]) return jobs[jobId];
+    var keys = Object.keys(jobs);
+    for (var i = 0; i < keys.length; i++) {
+      if (jobs[keys[i]] && jobs[keys[i]].id === jobId) return jobs[keys[i]];
+    }
+    return null;
+  }
+  function jl2_jobKey(def) {
+    var c = jl2_content();
+    var jobs = c && c.jobs;
+    if (!jobs || !def) return '';
+    var keys = Object.keys(jobs);
+    for (var i = 0; i < keys.length; i++) if (jobs[keys[i]] === def) return keys[i];
+    return def.name || '';
+  }
+
+  /* ============================================================
+   * 1. 环类型属性与事件映射
+   * ========================================================== */
+  var JL2_RING_LABEL = {
+    escort: '护送', kill: '缉拿', reach: '抵达', choice: '抉择', deliver: '交付',
+    collect: '采集', craft: '制作', talk: '攀谈'
+  };
+  // 每种环目标可被哪些事件满足（事件类型见 quest2.js 契约）
+  var JL2_RING_EVENTS = {
+    escort:  { quest: 1, enter: 1, choice: 1, job: 1 },
+    kill:    { kill: 1, battle_end: 1 },
+    reach:   { enter: 1, quest: 1 },
+    choice:  { choice: 1, quest: 1 },
+    deliver: { item: 1, talk: 1, quest: 1 },
+    collect: { item: 1 },
+    craft:   { craft: 1 },
+    talk:    { talk: 1 }
+  };
+
+  function jl2_ringInfo(def, ring) {
+    var info = { type: 'choice', desc: '', alt: '', isVariant: false };
+    if (!def) return info;
+    var types = (def.ringTypes && def.ringTypes.length) ? def.ringTypes : ['choice'];
+    var n = Math.max(1, ring | 0);
+    info.type = types[(n - 1) % types.length];
+    var rules = def.variantRules || [];
+    for (var i = 0; i < rules.length; i++) {
+      if (rules[i] && rules[i].at === n) {
+        info.type = rules[i].type || info.type;
+        info.desc = rules[i].desc || '';
+        info.alt = rules[i].alt || '';
+        info.isVariant = true;
+        break;
+      }
+    }
+    if (!info.desc) info.desc = '第' + n + '环 · ' + (JL2_RING_LABEL[info.type] || info.type);
+    return info;
+  }
+
+  function jl2_eventMatches(ringType, type, p) {
+    var map = JL2_RING_EVENTS[ringType];
+    if (!map || !map[type]) return false;
+    p = p || {};
+    // 采集要进 item、交付要出 item；quest 只认已办结类
+    if (ringType === 'collect' && type === 'item' && p.delta != null && p.delta <= 0) return false;
+    if (ringType === 'deliver' && type === 'item' && p.delta != null && p.delta >= 0) return false;
+    if (ringType === 'kill' && p.win === false) return false;
+    if (type === 'quest') {
+      var ph = p.phase || p.action;
+      if (ph && ph !== 'done' && ph !== 'progress' && ph !== 'ready') return false;
+    }
+    return true;
+  }
+
+  /* 物品增减：优先复用 addItem/removeItem（它们自己会发 item 事件） */
+  function jl2_itemDelta(name, delta) {
+    if (!name) return;
+    delta = delta > 0 ? 1 : -1;
+    var fn = jl2_fn(delta > 0 ? 'addItem' : 'removeItem');
+    if (fn) { try { fn(name); } catch (e) { jl2_err('itemDelta', e); } return; }
+    var p = jl2_player();
+    if (!p || !Array.isArray(p.inventory)) return;
+    if (delta > 0) p.inventory.push(name);
+    else { var at = p.inventory.indexOf(name); if (at > -1) p.inventory.splice(at, 1); }
+    var emit = jl2_fn('jl2_emit');
+    if (emit) emit('item', { name: name, delta: delta });
+  }
+
+  // 防自激：结算本环时忽略自己发出的 item/reward 事件
+  var _advancing = false;
+
+  /* ============================================================
+   * 2. jl2_loopsInit()
+   * ========================================================== */
+  function jl2_loopsInit() {
+    try {
+      jl2_daily(); // 自愈 game.qlog.daily.job
+      var handler = function (type, p) {
+        if (type === 'job' || type === 'quest' || type === 'turn' || type === 'item' ||
+            type === 'enter' || type === 'kill' || type === 'talk' || type === 'craft' ||
+            type === 'choice') {
+          jl2_jobAdvance(type, p);
+        }
+      };
+      var on = jl2_fn('jl2_on');
+      if (on) {
+        on('*', handler);
+      } else {
+        // 兜底：jl2_emit 兼容旧式 game._qsub 订阅
+        var g = jl2_game();
+        if (g) {
+          if (!Array.isArray(g._qsub)) g._qsub = [];
+          g._qsub.push(handler);
+        }
+      }
+      return true;
+    } catch (e) { jl2_err('jl2_loopsInit', e); return false; }
+  }
+
+  /* ============================================================
+   * 3. jl2_jobStart(jobId)
+   * ========================================================== */
+  function jl2_jobStart(jobId) {
+    try {
+      var def = jl2_jobDef(jobId);
+      if (!def) { jl2_log('（没有这个行当：' + jobId + '）', 'sys'); return null; }
+      var daily = jl2_daily();
+      if (!daily) return null;
+      var st = {
+        id: def.id || jl2_jobKey(def),
+        name: def.name,
+        ring: 1,
+        date: jl2_dayNow(),
+        done: [],
+        streak: 0,
+        lastOutput: ''
+      };
+      daily.job = st;
+      jl2_log('（接下行当：' + def.name + '，从第一环做起。）', 'sys');
+      return st;
+    } catch (e) { jl2_err('jl2_jobStart', e); return null; }
+  }
+
+  /* ============================================================
+   * 4. jl2_jobAdvance(type, p)
+   * ========================================================== */
+  function jl2_jobAdvance(type, p) {
+    if (_advancing) return null;
+    try {
+      var daily = jl2_daily();
+      var st = daily && daily.job;
+      if (!st) return null;
+      var def = jl2_jobDef(st.id) || jl2_jobDef(st.name);
+      if (!def) return null;
+      var day = jl2_dayNow();
+
+      // 新的一日：streak 断、回到第 1 环（行当本身不清空）
+      if (st.date !== day) {
+        st.date = day;
+        st.ring = 1;
+        st.streak = 0;
+        st.done = [];
+        st.lastOutput = '';
+      }
+
+      // turn / job 事件只做日期校验；显式 advance 才完成当前环
+      if (type === 'turn' || type === 'job') {
+        if (!p || (p.advance !== true && p.complete !== true)) return null;
+      }
+
+      var ring = Math.max(1, st.ring | 0);
+      var info = jl2_ringInfo(def, ring);
+      if (!jl2_eventMatches(info.type, type, p)) return null;
+
+      _advancing = true;
+      try {
+        // 链规：下一环先消耗上一环产出（用 item 事件体现）
+        if (st.lastOutput) jl2_itemDelta(st.lastOutput, -1);
+
+        // 本环产出：变式环给 special，普通环给 normal
+        var outputs = def.outputs || {};
+        var outName = info.isVariant ? (outputs.special || outputs.normal) : (outputs.normal || outputs.special);
+        if (outName) jl2_itemDelta(outName, 1);
+        st.lastOutput = outName || '';
+
+        var rec = { ring: ring, type: info.type, at: jl2_turn(), variant: !!info.isVariant };
+        if (!Array.isArray(st.done)) st.done = [];
+        st.done.push(rec);
+        var dkey = jl2_jobKey(def) + ':ring' + ring + '@' + day;
+        try { daily.done[dkey] = rec; } catch (_) {}
+
+        var total = (def.template && def.template.rings) || 20;
+        st.streak = (st.streak || 0) + 1;
+        if (ring >= total) {
+          jl2_jobGrand(def, st, day, daily);
+        } else {
+          st.ring = ring + 1;
+          jl2_log('（' + def.name + '第' + ring + '环了结：' + info.desc +
+                  '。得“' + (outName || '酬劳') + '”，下一环——' +
+                  jl2_ringInfo(def, st.ring).desc + '。）', 'sys');
+        }
+        return st;
+      } finally {
+        _advancing = false;
+      }
+    } catch (e) { jl2_err('jl2_jobAdvance', e); return null; }
+  }
+
+  /* 第 20 环大赏：world.flags + qlog.daily.done 双重防重，发完重置为下一日第 1 环 */
+  function jl2_jobGrand(def, st, day, daily) {
+    var prize = def.ring20 || {};
+    var g = jl2_game();
+    var key = 'jl2_job20_' + (def.id || jl2_jobKey(def)) + '_' + day;
+    if (!g.world.flags) g.world.flags = {};
+    if (g.world.flags[key]) return;
+    g.world.flags[key] = true;
+    try { daily.done[key] = true; } catch (_) {}
+
+    var reward = {
+      items: [{ name: prize.item || prize.name || '赏赐', n: 1 }],
+      exp: 60,
+      gold: 100,
+      fame: 5
+    };
+    if (prize.unlock) reward.unlock = Array.isArray(prize.unlock) ? prize.unlock : [prize.unlock];
+    var rewardFn = jl2_fn('jl2_reward');
+    if (rewardFn) {
+      try { rewardFn(reward, { silent: false, ctx: 'loops2.job20', job: def.id }); }
+      catch (e) { jl2_err('job20.reward', e); }
+    }
+    jl2_logSuccess('（' + def.name + '二十环圆满：' + (prize.name || '大赏') +
+                   '——“' + (prize.item || '赏赐') + '”。' + (prize.desc || '') + '。明日再接第一环。）');
+
+    st.ring = 1;
+    st.date = day + 1;
+    st.done = [];
+    st.lastOutput = '';
+  }
+
+  /* ============================================================
+   * 5. jl2_jobPanel()
+   * ========================================================== */
+  function jl2_jobPanel() {
+    try {
+      var doc = (typeof document !== 'undefined') ? document : null;
+      if (!doc) return null;
+      var c = jl2_content();
+      var jobs = (c && c.jobs) || {};
+      var daily = jl2_daily();
+      var st = daily && daily.job;
+      var wrap = doc.createElement('div');
+      wrap.className = 'jl2-job-panel';
+      wrap.style.cssText = 'max-height:70vh;overflow:auto;padding:2px 6px;';
+
+      Object.keys(jobs).forEach(function (key) {
+        var def = jobs[key];
+        if (!def) return;
+        var isActive = !!(st && (st.id === def.id || st.id === key || st.name === def.name));
+        var total = (def.template && def.template.rings) || 20;
+        var ring = isActive ? Math.max(1, st.ring | 0) : 1;
+        var cur = jl2_ringInfo(def, ring);
+        var nxt = jl2_ringInfo(def, ring + 1);
+
+        var card = doc.createElement('div');
+        card.style.cssText = 'border-bottom:1px solid #4a4a4a;padding:8px 2px;';
+
+        var h = doc.createElement('div');
+        h.style.cssText = 'font-weight:bold;margin-bottom:4px;';
+        h.textContent = def.name + ' · ' + (def.giver || '') + (def.home ? ('（' + def.home + '）') : '');
+        card.appendChild(h);
+
+        var info = doc.createElement('div');
+        info.style.cssText = 'font-size:13px;line-height:1.7;';
+        info.textContent = isActive
+          ? ('当前 ' + ring + '/' + total + ' 环 · 连做 ' + (st.streak || 0) +
+             ' · 下一环：' + (JL2_RING_LABEL[nxt.type] || nxt.type) + '（' + nxt.desc + '）')
+          : ('未接取 · 第一环：' + (JL2_RING_LABEL[cur.type] || cur.type) + '（' + cur.desc + '）');
+        card.appendChild(info);
+
+        var p = def.ring20 || {};
+        var grand = doc.createElement('div');
+        grand.style.cssText = 'font-size:13px;color:#d8b26a;margin:4px 0;line-height:1.6;';
+        grand.textContent = '第' + total + '环大赏：' + (p.name || '') + ' · ' + (p.item || '') +
+                            (p.desc ? (' —— ' + p.desc) : '');
+        card.appendChild(grand);
+
+        var btn = doc.createElement('button');
+        btn.style.cssText = 'margin-top:6px;';
+        if (isActive) {
+          btn.textContent = '放弃';
+          btn.addEventListener('click', function () {
+            try {
+              if (daily.job === st) daily.job = null;
+              jl2_log('（暂且搁下这一行的行当。）', 'sys');
+              jl2_jobPanel();
+            } catch (e) { jl2_err('jobPanel.放弃', e); }
+          });
+        } else {
+          btn.textContent = '接取';
+          btn.addEventListener('click', function () {
+            try { jl2_jobStart(key); jl2_jobPanel(); }
+            catch (e) { jl2_err('jobPanel.接取', e); }
+          });
+        }
+        card.appendChild(btn);
+        wrap.appendChild(card);
+      });
+
+      var open = jl2_fn('openModal');
+      if (open) { open('行当 · 二十环', function () { return wrap; }); return wrap; }
+      return wrap;
+    } catch (e) { jl2_err('jl2_jobPanel', e); return null; }
+  }
+
+  /* ============================================================
+   * 6. jl2_jobTrackerText()
+   * ========================================================== */
+  function jl2_jobTrackerText() {
+    try {
+      var daily = jl2_daily();
+      var st = daily && daily.job;
+      if (!st) return '';
+      var def = jl2_jobDef(st.id) || jl2_jobDef(st.name);
+      if (!def) return '';
+      var total = (def.template && def.template.rings) || 20;
+      var ring = Math.max(1, st.ring | 0);
+      var next = jl2_ringInfo(def, ring);
+      return def.name + ' ' + ring + '/' + total + ' · 下一环：' +
+             (JL2_RING_LABEL[next.type] || next.type);
+    } catch (e) { jl2_err('jl2_jobTrackerText', e); return ''; }
+  }
+
+  /* ============================================================
+   * 7. jl2_checkEncounters()
+   * ========================================================== */
+  function jl2_weatherName() {
+    var g = jl2_game();
+    if (!g) return '';
+    var cur = jl2_fn('curWeather');
+    if (cur) {
+      try { var w = cur(); if (w && w.name) return w.name; } catch (_) {}
+    }
+    try {
+      if (g.weather && g.weather.t && typeof WEATHERS !== 'undefined' && WEATHERS[g.weather.t]) {
+        return WEATHERS[g.weather.t].name;
+      }
+    } catch (_) {}
+    return (g.world && g.world.weather) ? g.world.weather : '';
+  }
+  // game.hour 为 0-11 的子时序号（每格约两小时），换算成 0-23 的钟点
+  function jl2_hourNow() {
+    var g = jl2_game();
+    if (!g) return 0;
+    if (typeof g.hour === 'number') return (g.hour * 2) % 24;
+    if (g.world && typeof g.world.hour === 'number') return g.world.hour % 24;
+    return 0;
+  }
+  function jl2_hourInRange(range, now) {
+    if (range == null) return true;
+    if (typeof range !== 'string') return true;
+    var m = /^(\d{1,2})\s*-\s*(\d{1,2})$/.exec(range);
+    if (!m) return range === String(now);
+    var lo = parseInt(m[1], 10), hi = parseInt(m[2], 10);
+    if (hi <= lo) hi += 24; // 跨夜区间
+    return now >= lo && now < hi;
+  }
+  function jl2_condMatch(cond) {
+    if (!cond || typeof cond !== 'object') return true;
+    var g = jl2_game(), p = jl2_player();
+    if (!g || !p) return false;
+    var i, list, ok;
+
+    if (cond.weather != null) {
+      var w = jl2_weatherName();
+      list = Array.isArray(cond.weather) ? cond.weather : [cond.weather];
+      ok = false;
+      for (i = 0; i < list.length; i++) if (list[i] === w) { ok = true; break; }
+      if (!ok) return false;
+    }
+    if (cond.room != null) {
+      list = Array.isArray(cond.room) ? cond.room : [cond.room];
+      if (list.indexOf(p.room) < 0) return false;
+    }
+    if (cond.hour != null && !jl2_hourInRange(cond.hour, jl2_hourNow())) return false;
+    if (cond.item != null) {
+      var inv = Array.isArray(p.inventory) ? p.inventory : [];
+      list = Array.isArray(cond.item) ? cond.item : [cond.item];
+      ok = false;
+      for (i = 0; i < list.length; i++) if (inv.indexOf(list[i]) > -1) { ok = true; break; }
+      if (!ok) return false;
+    }
+    if (cond.skill != null) {
+      var sk = Array.isArray(p.skills) ? p.skills : [];
+      list = Array.isArray(cond.skill) ? cond.skill : [cond.skill];
+      ok = false;
+      for (i = 0; i < list.length; i++) if (sk.indexOf(list[i]) > -1) { ok = true; break; }
+      if (!ok) return false;
+    }
+    if (cond.aff && typeof cond.aff === 'object') {
+      var aff = (p.aff && typeof p.aff === 'object') ? p.aff : {};
+      var names = Object.keys(cond.aff);
+      for (i = 0; i < names.length; i++) {
+        if ((aff[names[i]] || 0) < Number(cond.aff[names[i]])) return false;
+      }
+    }
+    if (cond.flag != null) {
+      list = Array.isArray(cond.flag) ? cond.flag : [cond.flag];
+      ok = false;
+      for (i = 0; i < list.length; i++) {
+        if ((g.flags && g.flags[list[i]]) || (g.world.flags && g.world.flags[list[i]])) { ok = true; break; }
+      }
+      if (!ok) return false;
+    }
+    if (cond.rep != null && (Number(g.fame || 0) < Number(cond.rep))) return false;
+    return true;
+  }
+
+  function jl2_checkEncounters() {
+    try {
+      var c = jl2_content();
+      var list = (c && c.encounters) || [];
+      var g = jl2_game();
+      if (!g) return 0;
+      if (!g.world.flags || typeof g.world.flags !== 'object') g.world.flags = {};
+      var fired = 0, turn = jl2_turn();
+      for (var i = 0; i < list.length; i++) {
+        var enc = list[i];
+        if (!enc || !enc.id) continue;
+        var flag = 'jl2_enc_' + enc.id;
+        if (enc.once && g.world.flags[flag]) continue;
+        if (!jl2_condMatch(enc.cond)) continue;
+
+        var chance = (typeof enc.chance === 'number') ? enc.chance : 1;
+        if (Math.random() > chance) {
+          // 未掷中：留一句若有若无的提示，不写 flag，下回合还能再遇（带冷却防刷屏）
+          var hintKey = 'jl2_enc_hint_' + enc.id;
+          if (turn >= (Number(g.world.flags[hintKey]) || 0)) {
+            g.world.flags[hintKey] = turn + 3;
+            jl2_log('（似有异动，' + (enc.desc || '一念之间，机缘擦肩') + '……）', 'sys');
+          }
+          continue;
+        }
+
+        if (enc.once) g.world.flags[flag] = true;
+        fired++;
+        var hasGraph = false;
+        try { hasGraph = !!(c && c.dialogues && c.dialogues[enc.quest]); } catch (_) {}
+        var play = jl2_fn('jl2_playDialogue');
+        if (play && enc.quest && hasGraph) {
+          try { play(enc.quest, { source: 'encounter', id: enc.id }); }
+          catch (e) {
+            jl2_err('encounter.dialogue.' + enc.id, e);
+            jl2_logSuccess('（' + (enc.desc || '奇遇降临') + '）');
+          }
+        } else {
+          jl2_logSuccess('（' + (enc.desc || '奇遇降临') + '）');
+        }
+      }
+      return fired;
+    } catch (e) { jl2_err('jl2_checkEncounters', e); return 0; }
+  }
+
+  /* ============================================================
+   * 8. 导出（全部 jl2_ 前缀）
+   * ========================================================== */
+  var API = {
+    jl2_loopsInit: jl2_loopsInit,
+    jl2_jobStart: jl2_jobStart,
+    jl2_jobAdvance: jl2_jobAdvance,
+    jl2_jobPanel: jl2_jobPanel,
+    jl2_jobTrackerText: jl2_jobTrackerText,
+    jl2_checkEncounters: jl2_checkEncounters
+  };
+  for (var key in API) if (Object.prototype.hasOwnProperty.call(API, key)) G[key] = API[key];
+
+})(typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this));
+//<<LOOPS2-END>>
+
+// ---- src/asks2.js ----
+/*
+ * asks2.js —— NPC 问话系统（参考 LPC MUD 的 "ask X about Y"）
+ *
+ * 目标：让 NPC 从固定动作按钮变成可探索的接口。
+ * 依赖：JL2_CONTENT / NPCS / player / game / player.aff / game.rel / game.flags
+ *       可选：jl2_emit / log / openModal / jl2_relGet / jl2_relTier
+ * 铁律：只新增 jl2_ 前缀全局；不改 ITEMS/QUESTS/NPCS 原表；出错写 window.__bootErrs。
+ */
+(function () {
+  'use strict';
+  var G = (typeof window !== 'undefined') ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
+
+  function err(where, e) {
+    try { G.__bootErrs && G.__bootErrs.push('asks2.' + where + ': ' + (e && e.message)); } catch (_) {}
+  }
+  function num(v, d) { var n = Number(v); return isFinite(n) ? n : (d || 0); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function content() {
+    return (typeof JL2_CONTENT !== 'undefined' && JL2_CONTENT) ? JL2_CONTENT : null;
+  }
+  function gameState() {
+    if (typeof game === 'undefined') return null;
+    if (!game.asks || typeof game.asks !== 'object') game.asks = {};
+    return game;
+  }
+  function npcState(name) {
+    var g = gameState();
+    if (!g) return null;
+    if (!g.asks[name]) g.asks[name] = { asked: {}, unlocked: [] };
+    return g.asks[name];
+  }
+  function npcDef(name) {
+    return (typeof NPCS !== 'undefined' && NPCS) ? NPCS[name] : null;
+  }
+  function relOf(name) {
+    if (typeof jl2_relGet === 'function') return jl2_relGet(name);
+    if (typeof game !== 'undefined' && game.rel && game.rel[name]) return game.rel[name];
+    return { aff: (typeof player !== 'undefined' && player.aff) ? num(player.aff[name], 0) : 0, respect: 0, debt: 0, tier: 0 };
+  }
+
+  /* ── 话题生成：任务线索 / 喜好忌讳 / 门路掌故 / 关系近况 ── */
+  function jl2_askTopics(npcName) {
+    try {
+      var out = [], seen = {}, c = content(), g = gameState(), st = npcState(npcName);
+      if (!g || !st) return out;
+      function add(key, label, hint, kind) {
+        if (!key || seen[key]) return;
+        seen[key] = true;
+        out.push({ key: key, label: label, hint: hint || '', kind: kind || 'chat', asked: !!st.asked[key] });
+      }
+      var rel = relOf(npcName);
+      var aff = num(rel.aff, 0);
+
+      // 1) 任务线索：这个 NPC 是委托人，或任务 hook 提到了他
+      if (c && c.quests) {
+        Object.keys(c.quests).forEach(function (qid) {
+          var q = c.quests[qid];
+          if (!q) return;
+          if (q.giver === npcName || q.turnin === npcName || (q.hook && String(q.hook).indexOf(npcName) >= 0)) {
+            add('quest:' + qid, '问「' + (q.title || qid) + '」', q.hook || q.desc || '一桩未了的事', 'quest');
+          }
+        });
+      }
+      var nd = npcDef(npcName);
+      // 2) 喜好 / 忌讳：送过一次或好感够深才问得出
+      if (g.knownLikes && g.knownLikes[npcName]) {
+        var likes = (nd && nd.likes) || ['干粮'];
+        var hates = (nd && nd.hates) || [];
+        add('likes', '他都中意什么', '喜：' + likes.join('、'), 'likes');
+        if (hates.length) add('hates', '最忌什么', '厌：' + hates.join('、'), 'hates');
+      } else if (aff >= 40) {
+        add('likes', '探探他的喜好', '交情够了，或送过一次礼便好开口', 'likes');
+      }
+      // 3) 门路掌故：人设里的出身、爱好、擅长，都会变成问题
+      if (nd) {
+        if (nd.title) add('origin', '问他的来历', nd.title, 'lore');
+        if (nd.home) add('place', '问' + nd.home, '此地有什么讲究', 'lore');
+        if (nd.profile && aff >= 25) add('past', '问他的旧事', String(nd.profile).slice(0, 42), 'lore');
+        var relData = c && c.relations && c.relations[npcName];
+        if (relData && relData.persona && relData.persona.hobby && relData.persona.hobby.length) {
+          add('hobby', '问他的闲好', relData.persona.hobby.join('、'), 'lore');
+        }
+      }
+      // 4) 关系近况：三维关系档位变化本身解锁新话题
+      if (aff >= 15) add('tier', '问我们算什么交情', '如今：' + (num(rel.tier, 0) >= 3 ? '肝胆相照' : '相见恨晚'), 'relation');
+      if (num(rel.respect, 0) >= 20) add('respect', '问为何敬我', '敬重来自办过的事，不是送过的礼', 'relation');
+      if (num(rel.debt, 0) !== 0) add('debt', '提一提前人情分', '欠下的人情总得有个说法', 'relation');
+      if (!out.length) add('hello', '随口寒暄', '“近日如何？”', 'chat');
+      return out;
+    } catch (e) { err('topics', e); return []; }
+  }
+
+  /* ── 问话回答：每个 kind 都给具体信息，并落下状态 ── */
+  function jl2_ask(npcName, key) {
+    try {
+      var g = gameState(), st = npcState(npcName), nd = npcDef(npcName);
+      if (!g || !st) return { ok: false, text: '' };
+      var topics = jl2_askTopics(npcName);
+      var topic = topics.filter(function (t) { return t.key === key; })[0];
+      if (!topic) return { ok: false, text: '（这话问不出口。）' };
+      var rel = relOf(npcName);
+      var text = '';
+
+      if (topic.kind === 'quest' && key.indexOf('quest:') === 0) {
+        var qid = key.slice(6), c = content(), q = c && c.quests && c.quests[qid];
+        text = '（' + npcName + '沉吟片刻）“' + ((q && q.hook) || topic.hint) + '”';
+        if (!g.flags[qid + '_asked']) {
+          g.flags[qid + '_asked'] = true;
+          text += '（你记下了这条线索。）';
+        }
+        if (typeof jl2_emit === 'function') jl2_emit('choice', { source: 'ask', npc: npcName, key: key, quest: qid });
+      } else if (topic.kind === 'likes') {
+        var likes = (nd && nd.likes) || ['干粮'];
+        text = '（' + npcName + '想了想）“要说中意……' + likes.join('、') + '。”';
+        g.knownLikes[npcName] = true;
+      } else if (topic.kind === 'hates') {
+        var hates = (nd && nd.hates) || [];
+        text = hates.length ? '（' + npcName + '皱眉）“' + hates.join('、') + '，休要再提。”'
+          : '（' + npcName + '摇头）“倒没什么特别厌的。”';
+      } else if (topic.kind === 'lore') {
+        text = '（' + npcName + '缓缓道）“' + topic.hint + '”';
+        if (!g.knowledge) g.knowledge = [];
+        if (g.knowledge.indexOf(key) < 0) g.knowledge.push(key + ':' + npcName);
+      } else if (topic.kind === 'relation') {
+        text = '（' + npcName + '看了你一眼）“' + topic.hint + '”';
+      } else {
+        text = '（' + npcName + '笑了笑）“' + topic.hint + '”';
+      }
+
+      if (!st.asked[key]) {
+        st.asked[key] = true;
+        if (st.unlocked.indexOf(key) < 0) st.unlocked.push(key);
+      }
+      if (typeof log === 'function') log(text, 'npc', npcName);
+      if (typeof jl2_emit === 'function') jl2_emit('ask', { npc: npcName, key: key, kind: topic.kind });
+      return { ok: true, text: text, kind: topic.kind };
+    } catch (e) { err('ask', e); return { ok: false, text: '' }; }
+  }
+
+  /* ── 面板 ── */
+  function jl2_openAskPanel(npcName) {
+    try {
+      var topics = jl2_askTopics(npcName);
+      var h = document.createElement('div');
+      h.style.cssText = 'font-size:.8em;color:#ffffff;';
+      var head = document.createElement('div');
+      head.style.cssText = 'color:#c9c9cf;font-size:.72em;margin-bottom:8px;line-height:1.7;';
+      head.textContent = '（向「' + npcName + '」问话——有些话要交情够了才问得出。）';
+      h.appendChild(head);
+      topics.forEach(function (t) {
+        var row = document.createElement('div');
+        row.className = 'list-row';
+        row.innerHTML = '<span class="lname">' + esc(t.label) + (t.asked ? '（已问）' : '') + '</span>' +
+          '<span class="lmeta">' + esc(t.hint) + '</span>';
+        var b = document.createElement('button');
+        b.className = 'btn small';
+        b.textContent = '问';
+        b.addEventListener('click', function () {
+          jl2_ask(npcName, t.key);
+          jl2_openAskPanel(npcName);
+        });
+        row.appendChild(b);
+        h.appendChild(row);
+      });
+      var tip = document.createElement('div');
+      tip.style.cssText = 'color:#a8a8b0;font-size:.7em;margin-top:8px;';
+      tip.textContent = jl2_askTrackerText(npcName);
+      h.appendChild(tip);
+      if (typeof openModal === 'function') openModal('问话 · ' + npcName, function () { return h; });
+      return h;
+    } catch (e) { err('panel', e); return null; }
+  }
+
+  function jl2_askTrackerText(npcName) {
+    try {
+      var topics = jl2_askTopics(npcName);
+      var asked = topics.filter(function (t) { return t.asked; }).length;
+      return '可问 ' + topics.length + ' 个 · 已问 ' + asked + ' 个 · 未问 ' + (topics.length - asked) + ' 个';
+    } catch (e) { return ''; }
+  }
+
+  function jl2_asksInit() {
+    try {
+      gameState();
+      if (typeof jl2_on === 'function') {
+        jl2_on('ask', function () {});
+      }
+      return { ok: true };
+    } catch (e) { err('init', e); return { ok: false }; }
+  }
+
+  G.jl2_asksInit = jl2_asksInit;
+  G.jl2_askTopics = jl2_askTopics;
+  G.jl2_ask = jl2_ask;
+  G.jl2_openAskPanel = jl2_openAskPanel;
+  G.jl2_askTrackerText = jl2_askTrackerText;
+})();
+
 // ---- src/_boot.js ----
 // JL2 启动器：由集成方编写。所有模块加载完毕后，在 init() 里调用 jl2_boot()。
 // 注：jl2_relSync 由 social2.js 提供，供旧 gainAff 同步权威值。
@@ -29414,7 +30743,9 @@ function jl2_boot(){
     ['materials',  function(){ if(typeof jl2_materialsInit==='function') jl2_materialsInit(); }],
     ['dialogue',   function(){ if(typeof jl2_dialogueInit==='function') jl2_dialogueInit(); }],
     ['social',     function(){ if(typeof jl2_socialInit==='function') jl2_socialInit(); }],
-    ['guide',      function(){ if(typeof jl2_guideInit==='function') jl2_guideInit(); }]
+    ['guide',      function(){ if(typeof jl2_guideInit==='function') jl2_guideInit(); }],
+    ['loops',      function(){ if(typeof jl2_loopsInit==='function') jl2_loopsInit(); }],
+    ['asks',       function(){ if(typeof jl2_asksInit==='function') jl2_asksInit(); }]
   ];
   steps.forEach(function(step){
     try{ step[1](); }
@@ -29422,7 +30753,7 @@ function jl2_boot(){
       try{ window.__bootErrs && window.__bootErrs.push('jl2_boot['+step[0]+']: '+(e&&e.message)); }catch(e2){}
     }
   });
-  try{ console.log('JL2-EMIT:boot'); if(typeof jl2_emit==='function') jl2_emit('boot',{}); console.log('JL2-EMITED:boot'); }catch(e){}
+  try{ if(typeof jl2_emit==='function') jl2_emit('boot',{}); }catch(e){}
   window.__JL2_OK=true;
 }
 //<<JL2-END>>

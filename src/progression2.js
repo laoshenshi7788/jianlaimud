@@ -75,6 +75,10 @@
       v = num(rewardObj.exp, 0);
       if (v > 0 && p) { p.exp = num(p.exp, 0) + v; parts.push('经验+' + v); }
       else if (v < 0 && p) { p.exp = Math.max(0, num(p.exp, 0) + v); parts.push('经验' + v); }
+      // 任务/奇遇发的经验必须走同一条升级链，否则经验涨了等级不动，后续任务被等级门槛卡死
+      if (v !== 0) {
+        try { if (typeof G.checkLevelUp === 'function') G.checkLevelUp(); } catch (e) { err('reward.levelUp', e); }
+      }
 
       v = num(rewardObj.gold, 0);
       if (v > 0 && p) { p.gold = num(p.gold, 0) + v; parts.push('银两+' + v); }
@@ -160,6 +164,10 @@
   var JL2_AFFIX_DESC = {
     锋利: '暴击', 坚韧: '减伤', 轻捷: '闪避', 破甲: '无视防御', 吸血: '吸血', 通灵: '技能效果'
   };
+  var JL2_AFFIX_STAT = {
+    锋利: 'crit', 坚韧: 'dr', 轻捷: 'dodge',
+    破甲: 'pierce', 吸血: 'lifesteal', 通灵: 'spell'
+  };
   var JL2_QUALITY = {
     凡: { mul: 1.0, affixes: 0, color: '白' },
     精: { mul: 1.15, affixes: 1, color: '绿' },
@@ -215,8 +223,10 @@
       }
       var q = JL2_QUALITY[quality];
       var h = hashStr(base);
-      var rawDmg = src ? num(src.damage != null ? src.damage : src.atkBonus, 10 + (h % 9)) : (10 + (h % 9));
-      var rawDef = src ? num(src.defBonus, 0) : (h % 5);
+      // 只有原表真的给了攻击/防御，派生数据才给；否则按哈希编造会让换防具改变攻击力。
+      var rawDmg = 0, rawDef = 0;
+      if (src && (src.damage != null || src.atkBonus != null)) rawDmg = num(src.damage != null ? src.damage : src.atkBonus, 0);
+      if (src && src.defBonus != null) rawDef = num(src.defBonus, 0);
 
       var affix = db.affix ? db.affix.slice() : [];
       if (!affix.length && q.affixes > 0) {
@@ -230,6 +240,13 @@
         }
       }
 
+      var affixStats = { crit: 0, dr: 0, dodge: 0, pierce: 0, lifesteal: 0, spell: 0 };
+      affix.forEach(function (a) {
+        var ap = splitName(a);
+        var statKey = JL2_AFFIX_STAT[ap.base];
+        if (statKey) affixStats[statKey] += num(ap.level, 0);
+      });
+
       var level = clamp(num(sp.level, 0), 0, 9);
       var lvMul = 1 + 0.06 * level;
       var data = {
@@ -239,6 +256,7 @@
         atkBonus: Math.round(rawDmg * q.mul * lvMul),
         defBonus: Math.round(rawDef * q.mul * lvMul),
         affix: affix,
+        affixStats: affixStats,
         affixDesc: affix.map(function (a) { return a.replace(/\+.*$/, '') + '（' + (JL2_AFFIX_DESC[a.replace(/\+.*$/, '')] || '增益') + '）'; }),
         set: db.set || null,
         setData: db.set && JL2_SETS[db.set] ? JL2_SETS[db.set] : null,
@@ -261,6 +279,36 @@
       var f = worn ? 0.5 : 1;
       return { atk: Math.round(num(item.atkBonus, 0) * f), def: Math.round(num(item.defBonus, 0) * f) };
     } catch (e) { err('itemBonus', e); return { atk: 0, def: 0 }; }
+  }
+
+  /* ─── 装备聚合：把全身装备的词条 / 套装汇成一份只读汇总 ─────────── */
+  function jl2_equipAggregate() {
+    var out = {
+      atk: 0, def: 0, crit: 0, dr: 0, dodge: 0, pierce: 0,
+      lifesteal: 0, spell: 0, sets: {}, affixes: []
+    };
+    try {
+      var p = (typeof player !== 'undefined') ? player : G.player;
+      if (!p || !isObj(p.equipment)) return out;
+      Object.keys(p.equipment).forEach(function (slot) {
+        var eq = p.equipment[slot];
+        if (!eq) return;
+        var name = isObj(eq) ? (eq.name || eq.base) : eq;
+        if (!name) return;
+        var d = jl2_itemData(name);
+        if (!d) return;
+        out.atk += num(d.atkBonus, 0);
+        out.def += num(d.defBonus, 0);
+        ['crit', 'dr', 'dodge', 'pierce', 'lifesteal', 'spell'].forEach(function (k) {
+          out[k] += num(d.affixStats && d.affixStats[k], 0);
+        });
+        if (d.set) out.sets[d.set] = num(out.sets[d.set], 0) + 1;
+        if (Array.isArray(d.affix)) {
+          d.affix.forEach(function (a) { out.affixes.push(a); });
+        }
+      });
+    } catch (e) { err('equipAggregate', e); }
+    return out;
   }
 
   /* ─── 强化 / 修理 / 鉴定 ───────────────────────────────────── */
@@ -608,6 +656,7 @@
   G.jl2_reward = jl2_reward;
   G.jl2_itemData = jl2_itemData;
   G.jl2_itemBonus = jl2_itemBonus;
+  G.jl2_equipAggregate = jl2_equipAggregate;
   G.jl2_strengthen = jl2_strengthen;
   G.jl2_repair = jl2_repair;
   G.jl2_identify = jl2_identify;
